@@ -39,7 +39,8 @@
       overflow: hidden;
       margin: 0;
     }
-    * { touch-action: manipulation; }
+    * { touch-action: manipulation; -webkit-touch-callout: none; }
+    canvas { touch-action: manipulation !important; }
     input, textarea, [contenteditable] {
       user-select: text !important;
       -webkit-user-select: text !important;
@@ -89,7 +90,9 @@
       background: white; border-radius: var(--radius-lg); padding: 1.8rem;
       z-index: 2001; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.5);
       border: 1px solid #eee; max-height: 85vh; overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
+    .sheet-float input, .sheet-float select { font-size: 16px !important; }
     .sheet-up-enter-active, .sheet-up-leave-active {
       transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
     }
@@ -263,7 +266,7 @@
     <!-- 快速入账/编辑面板 -->
     <div v-if="showQuickSheet" class="sheet-mask" @click="showQuickSheet=false"></div>
     <transition name="sheet-up">
-      <div v-if="showQuickSheet" class="sheet-float">
+      <div v-if="showQuickSheet" class="sheet-float" @touchstart.stop>
         <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"></div>
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-xl font-black">{{ isEditing ? '编辑记录' : '入账确认' }}</h2>
@@ -536,6 +539,8 @@
       const markAsProduced = (id) => { const r = storage.records.value.find(x => x.id === id); if (r) { r.status = 'produced'; storage.saveData(); toast.showToast('完工'); } };
       const deleteRecord = async (id) => { const ok = await dialog.showConfirm('删除记录', '确定删除此记录？'); if (ok) { storage.records.value = storage.records.value.filter(r => r.id !== id); storage.saveData(); } };
       const createPartition = async () => { const n = await dialog.showPrompt('新增分区', '分区名称'); if (n) { storage.partitions.value.push({ id: generateId('P'), ledgerId: ledger.currentLedgerId.value, name: n.trim() }); storage.saveData(); } };
+
+      watch(showQuickSheet, (val) => { if (val) nextTick(() => { const el = document.querySelector('.sheet-float input[type="text"], .sheet-float input:not([type])'); el?.focus(); }); });
 
       return { quickForm, selectedLedgerForQuick, showQuickSheet, showDatePicker, pickerMonthDate, pickerMonthDisplay, pickerCalendarDays, isEditing, searchQuery, statusFilter, statusFilters, hasActiveFilter, currentStats, pendingOrders, groupedRecords, filteredGroupedRecords, currentPartitions, toggleDatePicker, changePickerMonth, selectPickerDate, prepareQuickEntry, startEdit, submitQuickEntry, toggleRecordStatus, markAsProduced, deleteRecord, createPartition };
     }
