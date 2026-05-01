@@ -33,10 +33,12 @@
       background: #f4f4f7;
       user-select: none;
       -webkit-user-select: none;
+      touch-action: manipulation;
       font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
       overflow: hidden;
       margin: 0;
     }
+    input, textarea, [contenteditable] { user-select: text; -webkit-user-select: text; }
     ::-webkit-scrollbar { display: none; }
     .tab-active { color: #18181b; font-weight: 900; }
     .tab-inactive { color: #a1a1aa; }
@@ -212,7 +214,7 @@
 
     <!-- ========== 详情页 ========== -->
     <div v-if="viewMode==='detail'" class="max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl sm:border-x border-zinc-200">
-      <header class="px-4 py-5 border-b flex items-center gap-2 bg-white sticky top-0 z-10">
+      <header class="px-4 border-b flex items-center gap-2 bg-white sticky top-0 z-10" style="padding-top: calc(1.25rem + env(safe-area-inset-top, 0px)); padding-bottom: 1.25rem;">
         <button @click="viewMode='tabs'; searchQuery=''; statusFilter='all'" aria-label="返回" class="w-12 h-12 rounded-full flex items-center justify-center"><i class="ri-arrow-left-s-line text-3xl"></i></button>
         <h2 class="flex-1 text-lg font-black truncate">{{ currentLedger?.name || '' }}</h2>
         <button @click="deleteLedger" aria-label="删除账本" class="text-zinc-300 p-2"><i class="ri-delete-bin-line text-xl"></i></button>
