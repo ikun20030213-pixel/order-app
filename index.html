@@ -153,14 +153,13 @@
     </transition>
 
     <!-- ========== 主视图 ========== -->
-    <transition name="page-slide-back" mode="out-in">
-    <div v-if="viewMode === 'tabs'" key="tabs" class="max-w-md mx-auto bg-white h-screen relative shadow-2xl flex flex-col sm:border-x border-zinc-200">
+    <div v-if="viewMode === 'tabs'" class="max-w-md mx-auto bg-white h-screen relative shadow-2xl flex flex-col sm:border-x border-zinc-200">
       <header class="px-6 pb-4 bg-white sticky top-0 z-20 flex justify-between items-center" style="padding-top: calc(3rem + env(safe-area-inset-top, 0px))">
         <h1 class="text-3xl font-black tracking-tighter">
-          {{ activeTab === 'ledgers' ? '项目' : activeTab === 'todo' ? '待制作' : activeTab === 'stats' ? '看板' : currentMonthDisplay }}
+          {{ activeTab === 'ledgers' ? '项目' : activeTab === 'todo' ? '待办' : activeTab === 'stats' ? '看板' : currentMonthDisplay }}
         </h1>
         <div class="flex gap-2 items-center">
-          <button v-if="activeTab === 'todo'" @click="prepareQuickEntry('', 0, true)" class="bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg">派单</button>
+          <button v-if="activeTab === 'todo'" @click="prepareQuickEntry('', 0, true)" class="bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg">添加</button>
           <template v-if="activeTab === 'stats'">
             <button @click="showExportPanel = true" class="bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1"><i class="ri-download-line"></i> 导出</button>
           </template>
@@ -173,8 +172,7 @@
 
       <main class="flex-1 overflow-y-auto px-5" style="padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px)); overscroll-behavior-y: contain;">
         <!-- 账本列表 -->
-        <transition :name="'tab-slide-' + tabDirection" mode="out-in">
-        <div v-show="activeTab === 'ledgers'" class="space-y-4 pt-2" key="ledgers">
+        <div v-if="activeTab === 'ledgers'" class="space-y-4 pt-2">
           <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">拖拽底部"¥"号创建账本</p></div>
           <transition-group name="list-item">
           <div v-for="ledger in ledgers" :key="ledger.id" @click="enterLedger(ledger.id)" :data-id="ledger.id" :class="['ledger-card p-6 rounded-[var(--radius-lg)] border bg-zinc-50 border-zinc-100 flex justify-between transition-all', hoveredLedgerId===ledger.id?'drop-highlight':'shadow-sm']">
@@ -184,8 +182,8 @@
           </transition-group>
         </div>
 
-        <!-- 待制作 -->
-        <div v-show="activeTab==='todo'" class="space-y-4 pt-2">
+        <!-- 待办 -->
+        <div v-if="activeTab==='todo'" class="space-y-4 pt-2">
           <div v-if="pendingOrders.length===0" class="py-20 text-center text-zinc-300"><i class="ri-checkbox-circle-line text-5xl block mb-4 text-zinc-200"></i><p class="text-sm">全部活儿都干完了</p></div>
           <div v-for="order in pendingOrders" :key="order.id" class="bg-orange-50 p-5 rounded-[var(--radius-lg)] border border-orange-100 flex justify-between items-center">
             <div class="flex-1 pr-4"><p class="font-bold text-zinc-800 text-sm">{{ order.customer }}</p><p class="text-[10px] text-orange-400 font-bold uppercase mt-1">{{ getLedgerName(order.ledgerId) }} · ¥{{ order.amount }}</p></div>
@@ -194,7 +192,7 @@
         </div>
 
         <!-- 看板 -->
-        <div v-show="activeTab==='stats'" class="space-y-4 pt-2 pb-4">
+        <div v-if="activeTab==='stats'" class="space-y-4 pt-2 pb-4">
           <div class="bg-zinc-900 p-7 rounded-[var(--radius-xl)] text-white shadow-2xl">
             <div class="flex justify-between items-end mb-4"><div><p class="text-[10px] text-zinc-500">实收资产</p><transition name="num-bounce" mode="out-in"><p class="text-5xl font-black" :key="totalPaid">¥{{ totalPaid }}</p></transition></div><div class="text-right"><p class="text-[10px] text-zinc-400">待收欠款</p><transition name="num-bounce" mode="out-in"><p class="text-xl font-bold text-zinc-200" :key="totalReceivable">¥{{ totalReceivable }}</p></transition></div></div>
             <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden"><div class="h-full bg-emerald-400 transition-all duration-700" :style="{width:paidRatio+'%'}"></div></div>
@@ -220,7 +218,7 @@
         </div>
 
         <!-- 日历 -->
-        <div v-show="activeTab==='calendar'" class="pt-2">
+        <div v-if="activeTab==='calendar'" class="pt-2">
           <div class="grid grid-cols-7 mb-3 text-center text-[10px] font-black text-zinc-300">
             <div v-for="d in ['日','一','二','三','四','五','六']">{{d}}</div>
           </div>
@@ -242,7 +240,6 @@
             <button @click="clearDayStickers" class="mt-3 text-[10px] font-bold text-red-400 underline">清除当日贴纸</button>
           </div>
         </div>
-        </transition>
       </main>
 
       <!-- 底部导航 -->
@@ -252,14 +249,12 @@
         </button>
       </nav>
       <div v-if="activeTab==='ledgers'" class="fixed left-1/2 -translate-x-1/2 z-[200]" style="bottom: calc(7rem + env(safe-area-inset-bottom, 0px))">
-        <div @touchstart.prevent="startMainDrag" @mousedown.prevent="startMainDrag" aria-label="点击新建项目，拖拽到项目入账" class="w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-3xl font-black shadow-2xl active:scale-90 transition-transform cursor-grab select-none">¥</div>
+        <div @touchstart.prevent="startMainDrag" @mousedown.prevent="startMainDrag" aria-label="点击新建项目，拖拽到项目入账" class="w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-4xl shadow-2xl active:scale-90 transition-transform cursor-grab select-none"><i class="ri-add-line"></i></div>
       </div>
     </div>
-    </transition>
 
     <!-- ========== 详情页 ========== -->
-    <transition name="page-slide" mode="out-in">
-    <div v-if="viewMode==='detail'" key="detail" class="max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl sm:border-x border-zinc-200">
+    <div v-if="viewMode==='detail'" class="max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl sm:border-x border-zinc-200">
       <header class="px-4 border-b flex items-center gap-2 bg-white sticky top-0 z-10" style="padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)); padding-bottom: 1.25rem;">
         <button @click="viewMode='tabs'; searchQuery=''; statusFilter='all'" aria-label="返回" class="w-14 h-14 -ml-1 rounded-full flex items-center justify-center active:bg-zinc-100"><i class="ri-arrow-left-s-line text-3xl"></i></button>
         <h2 class="flex-1 text-lg font-black truncate">{{ currentLedger?.name || '' }}</h2>
@@ -300,7 +295,6 @@
         <button @click="createPartition" class="w-full py-4 border-2 border-dashed border-zinc-100 rounded-[var(--radius-lg)] text-zinc-300 font-bold text-xs">+ 新增分类分区</button>
       </main>
     </div>
-    </transition>
 
     <!-- 快速入账/编辑面板 -->
     <div v-if="showQuickSheet" class="sheet-mask" @click="showQuickSheet=false"></div>
@@ -422,13 +416,20 @@
 
     <!-- 拖拽幽灵 -->
     <transition name="drag-pop">
-    <div v-if="isMainDragging" class="fixed z-[9999] pointer-events-none w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-3xl font-black" :class="hoveredLedgerId?'scale-110':''" :style="{left:dragPos.x+'px',top:dragPos.y+'px',transform:'translate(-50%,-50%) rotate('+(hoveredLedgerId?-8:5)+'deg)',boxShadow:'0 20px 40px -8px rgba(0,0,0,0.4)'}">¥</div>
+    <div v-if="isMainDragging" class="fixed z-[9999] pointer-events-none w-16 h-16 bg-zinc-900 text-white flex items-center justify-center text-3xl font-black transition-all duration-150" :class="hoveredLedgerId?'scale-110':''" :style="{left:dragPos.x+'px',top:dragPos.y+'px',transform:'translate(-50%,-50%) rotate('+(hoveredLedgerId?-8:5)+'deg) scale('+Math.min(1+dragDistance/300,1.2)+')',borderRadius:dragDistance>60?'50%':'var(--radius-lg)',boxShadow:'0 '+Math.min(dragDistance/5,30)+'px '+Math.min(dragDistance/3,50)+'px -8px rgba(0,0,0,0.4)'}">{{ dragDistance > 80 ? '💰' : '+' }}</div>
     </transition>
   </div>
 
   <script>
   (function() {
     if (typeof Vue === 'undefined') { setTimeout(arguments.callee, 100); return; }
+    // 禁止双击缩放
+    let _lastTap = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - _lastTap < 350) { e.preventDefault(); }
+      _lastTap = now;
+    }, { passive: false });
     const { createApp, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } = Vue;
 
     // ===== 工具函数 =====
@@ -511,7 +512,7 @@
       const selectedLedgerForQuick = ref(''); const showQuickSheet = ref(false); const showDatePicker = ref(false); const pickerMonthDate = ref(new Date());
       const isEditing = ref(false); const editingRecordId = ref(null);
       const searchQuery = ref(''); const statusFilter = ref('all');
-      const statusFilters = [{ value: 'all', label: '全部' }, { value: 'pending', label: '制作中' }, { value: 'produced', label: '待结' }, { value: 'paid', label: '已收' }];
+      const statusFilters = [{ value: 'all', label: '全部' }, { value: 'pending', label: '待办' }, { value: 'produced', label: '待结' }, { value: 'paid', label: '已收' }];
       const hasActiveFilter = computed(() => searchQuery.value.trim() !== '' || statusFilter.value !== 'all');
 
       const currentStats = computed(() => ({ paid: sumAmount(storage.records.value.filter(r => r.ledgerId === ledger.currentLedgerId.value && r.status === 'paid')) }));
@@ -624,19 +625,19 @@
 
     // ===== Composable: useDrag =====
     function useDrag(storage, ledger, prepareQuickEntry, toast) {
-      const isMainDragging = ref(false); const dragPos = ref({ x: 0, y: 0 }); const hoveredLedgerId = ref(null);
+      const isMainDragging = ref(false); const dragPos = ref({ x: 0, y: 0 }); const hoveredLedgerId = ref(null); const dragDistance = ref(0);
       let currentOnMove = null; let currentOnEnd = null;
       let startPos = { x: 0, y: 0 }; let didDrag = false;
       const updateDragPos = (e) => { const c = e.touches ? e.touches[0] : e; dragPos.value = { x: c.clientX, y: c.clientY }; };
       const startMainDrag = (e) => {
-        const c = e.touches ? e.touches[0] : e; startPos = { x: c.clientX, y: c.clientY }; didDrag = false;
+        const c = e.touches ? e.touches[0] : e; startPos = { x: c.clientX, y: c.clientY }; didDrag = false; dragDistance.value = 0;
         isMainDragging.value = true; updateDragPos(e);
-        currentOnMove = (ev) => { ev.preventDefault(); updateDragPos(ev); const dx = dragPos.value.x - startPos.x, dy = dragPos.value.y - startPos.y; if (Math.abs(dx) > 8 || Math.abs(dy) > 8) didDrag = true; const el = document.elementFromPoint(dragPos.value.x, dragPos.value.y); hoveredLedgerId.value = el?.closest?.('.ledger-card')?.getAttribute('data-id') || null; };
-        currentOnEnd = () => { try { if (isMainDragging.value) { if (didDrag) { if (hoveredLedgerId.value) prepareQuickEntry(hoveredLedgerId.value, CONFIG.DEFAULT_AMOUNT); else if (storage.ledgers.value.length === 0) toast.showToast('请先创建账本'); } else { ledger.showLedgerModal.value = true; ledger.newLedgerName.value = ''; } } } finally { isMainDragging.value = false; hoveredLedgerId.value = null; didDrag = false; document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); currentOnMove = null; currentOnEnd = null; } };
+        currentOnMove = (ev) => { ev.preventDefault(); updateDragPos(ev); const dx = dragPos.value.x - startPos.x, dy = dragPos.value.y - startPos.y; dragDistance.value = Math.sqrt(dx*dx + dy*dy); if (dragDistance.value > 8) didDrag = true; const el = document.elementFromPoint(dragPos.value.x, dragPos.value.y); hoveredLedgerId.value = el?.closest?.('.ledger-card')?.getAttribute('data-id') || null; };
+        currentOnEnd = () => { try { if (isMainDragging.value) { if (didDrag) { if (hoveredLedgerId.value) prepareQuickEntry(hoveredLedgerId.value, CONFIG.DEFAULT_AMOUNT); else if (storage.ledgers.value.length === 0) toast.showToast('请先创建账本'); } else { ledger.showLedgerModal.value = true; ledger.newLedgerName.value = ''; } } } finally { isMainDragging.value = false; hoveredLedgerId.value = null; dragDistance.value = 0; didDrag = false; document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); currentOnMove = null; currentOnEnd = null; } };
         document.addEventListener('touchmove', currentOnMove, { passive: false }); document.addEventListener('mousemove', currentOnMove); document.addEventListener('touchend', currentOnEnd); document.addEventListener('mouseup', currentOnEnd);
       };
       onBeforeUnmount(() => { if (currentOnMove) { document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); } if (currentOnEnd) { document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); } });
-      return { isMainDragging, dragPos, hoveredLedgerId, startMainDrag };
+      return { isMainDragging, dragPos, hoveredLedgerId, dragDistance, startMainDrag };
     }
 
     // ===== Composable: useExport =====
@@ -656,7 +657,7 @@
         let csv = "﻿日期,账本,客户,金额,状态,备注\n";
         filtered.forEach(r => {
           const l = ledgers.value.find(x => x.id === r.ledgerId)?.name || '已删除';
-          const s = r.status === 'paid' ? '已收' : (r.status === 'produced' ? '待结' : '制作中');
+          const s = r.status === 'paid' ? '已收' : (r.status === 'produced' ? '待结' : '待办');
           csv += [new Date(r.date).toLocaleDateString(), l, r.customer, r.amount, s, r.note || ''].map(csvEscape).join(',') + '\n';
         });
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -673,7 +674,7 @@
     const App = {
       setup() {
         const viewMode = ref('tabs'); const activeTab = ref('ledgers'); const tabDirection = ref('right');
-        const tabs = [{ id: 'ledgers', icon: 'ri-folder-line', n: '项目' }, { id: 'todo', icon: 'ri-task-line', n: '待制作' }, { id: 'stats', icon: 'ri-bar-chart-line', n: '看板' }, { id: 'calendar', icon: 'ri-calendar-line', n: '日历' }];
+        const tabs = [{ id: 'ledgers', icon: 'ri-folder-line', n: '项目' }, { id: 'todo', icon: 'ri-task-line', n: '待办' }, { id: 'stats', icon: 'ri-bar-chart-line', n: '看板' }, { id: 'calendar', icon: 'ri-calendar-line', n: '日历' }];
         const tabIndex = () => Object.fromEntries(tabs.map((t, i) => [t.id, i]));
         watch(activeTab, (newTab, oldTab) => { const idx = tabIndex(); tabDirection.value = (idx[newTab] || 0) > (idx[oldTab] || 0) ? 'right' : 'left'; });
         const stickerLibrary = CONFIG.STICKER_LIBRARY;
@@ -723,7 +724,7 @@
           addStickerToSelectedDay: calendar.addStickerToSelectedDay, removeLastSticker: calendar.removeLastSticker,
           clearDayStickers: calendar.clearDayStickers,
           isMainDragging: drag.isMainDragging, dragPos: drag.dragPos,
-          hoveredLedgerId: drag.hoveredLedgerId, startMainDrag: drag.startMainDrag,
+          hoveredLedgerId: drag.hoveredLedgerId, dragDistance: drag.dragDistance, startMainDrag: drag.startMainDrag,
           showExportPanel: csvExport.showExportPanel, exportScope: csvExport.exportScope,
           exportLedgerId: csvExport.exportLedgerId, exportStartDate: csvExport.exportStartDate,
           exportEndDate: csvExport.exportEndDate, doExport,
