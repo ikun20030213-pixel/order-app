@@ -92,7 +92,7 @@
       border: 1px solid #eee; max-height: 85vh; overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
-    .sheet-float input, .sheet-float select { font-size: 16px !important; }
+    .sheet-float input, .sheet-float select, .sheet-mask input { font-size: 16px !important; }
     .sheet-up-enter-active, .sheet-up-leave-active {
       transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
     }
@@ -461,6 +461,7 @@
       const enterLedger = (id) => { currentLedgerId.value = id; };
       const createLedger = () => { if (!newLedgerName.value.trim()) return; storage.ledgers.value.push({ id: generateId('L'), name: newLedgerName.value.trim() }); storage.saveData(); showLedgerModal.value = false; newLedgerName.value = ''; toast.showToast('项目已创建'); };
       const deleteLedger = async () => { const ok = await dialog.showConfirm('删除账本', '删除账本将同时删除该账本下的所有订单记录和分区，不可恢复。'); if (!ok) return; const targetId = currentLedgerId.value; storage.ledgers.value = storage.ledgers.value.filter(l => l.id !== targetId); storage.partitions.value = storage.partitions.value.filter(p => p.ledgerId !== targetId); storage.records.value = storage.records.value.filter(r => r.ledgerId !== targetId); storage.saveData(); currentLedgerId.value = null; toast.showToast('账本已删除'); };
+      watch(showLedgerModal, (val) => { if (val) nextTick(() => { const el = document.querySelector('.sheet-mask input'); setTimeout(() => el?.focus(), 300); }); });
       return { currentLedgerId, currentLedger, showLedgerModal, newLedgerName, ledgerStatsMap, getLedgerStats, getLedgerName, totalPaid, totalReceivable, paidRatio, enterLedger, createLedger, deleteLedger };
     }
 
