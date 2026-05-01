@@ -164,7 +164,7 @@
           <template v-if="activeTab === 'stats'">
             <button @click="showExportPanel = true" class="bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1"><i class="ri-download-line"></i> 导出</button>
           </template>
-          <button @click="showSyncPanel = true" :class="synced?'text-emerald-500':'text-zinc-300'" class="text-xl"><i :class="syncing?'ri-loader-4-line animate-spin':'ri-cloud-line'"></i></button>
+          <button v-if="activeTab==='ledgers'" @click="showSyncPanel = true" :class="synced?'text-emerald-500':'text-zinc-300'" class="text-xl"><i :class="syncing?'ri-loader-4-line animate-spin':'ri-cloud-line'"></i></button>
           <template v-if="activeTab === 'calendar'">
             <button @click="changeMonth(-1)" aria-label="上个月" class="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-left-s-line"></i></button>
             <button @click="changeMonth(1)" aria-label="下个月" class="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-right-s-line"></i></button>
@@ -172,7 +172,7 @@
         </div>
       </header>
 
-      <main class="flex-1 overflow-y-auto px-5" style="padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px)); overscroll-behavior-y: contain;">
+      <main class="flex-1 overflow-y-auto px-5" style="padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px)); overscroll-behavior-y: contain;" @touchstart.passive="$event._swipeXY=$event.touches[0]" @touchend.passive="handleSwipe($event)">
         <!-- 账本列表 -->
         <div v-if="activeTab === 'ledgers'" class="space-y-4 pt-2">
           <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">点击底部"+"号创建账本</p></div>
@@ -695,7 +695,7 @@
       const toggleRecordStatus = (r) => { if (r.status === 'pending') r.status = 'produced'; else if (r.status === 'produced') r.status = 'paid'; else r.status = 'produced'; storage.saveData(); };
       const markAsProduced = (id) => { const r = storage.records.value.find(x => x.id === id); if (r) { r.status = 'produced'; storage.saveData(); toast.showToast('完工'); } };
       const deleteRecord = async (id) => { const ok = await dialog.showConfirm('删除记录', '确定删除此记录？'); if (ok) { storage.records.value = storage.records.value.filter(r => r.id !== id); storage.saveData(); } };
-      const createPartition = async () => { const n = await dialog.showPrompt('新增分区', '分区名称'); if (n) { storage.partitions.value.push({ id: generateId('P'), ledgerId: ledger.currentLedgerId.value, name: n.trim() }); storage.saveData(); toast.showToast('分区已创建，添加账单时可选择'); } };
+      const createPartition = async () => { const n = await dialog.showPrompt('新增分区', '分区名称'); if (n) { storage.partitions.value = [...storage.partitions.value, { id: generateId('P'), ledgerId: ledger.currentLedgerId.value, name: n.trim() }]; storage.saveData(); toast.showToast('分区已创建'); } };
 
       return { quickForm, selectedLedgerForQuick, showQuickSheet, showDatePicker, pickerMonthDate, pickerMonthDisplay, pickerCalendarDays, isEditing, searchQuery, statusFilter, statusFilters, hasActiveFilter, currentStats, pendingOrders, groupedRecords, filteredGroupedRecords, recentRecords, currentPartitions, toggleDatePicker, changePickerMonth, selectPickerDate, prepareQuickEntry, startEdit, submitQuickEntry, toggleRecordStatus, markAsProduced, deleteRecord, createPartition };
     }
@@ -926,13 +926,26 @@
         const cloudSync = useCloudSync(storage, toast);
 
         watch(() => storage.records.value.length, () => { if (activeTab.value === 'stats') charts.renderCharts(); });
-        watch(activeTab, (newTab) => { if (newTab === 'stats') nextTick(charts.renderCharts); });
+        watch(activeTab, (newTab) => { if (newTab === 'stats') setTimeout(charts.renderCharts, 100); });
 
         onMounted(() => { cloudSync.initSync(); });
         watch(storage.records, () => { if (cloudSync.synced.value) cloudSync.debouncedPush(); }, { deep: true });
         watch(storage.ledgers, () => { if (cloudSync.synced.value) cloudSync.debouncedPush(); }, { deep: true });
 
         const enterLedger = (id) => { ledger.enterLedger(id); viewMode.value = 'detail'; records.searchQuery.value = ''; records.statusFilter.value = 'all'; };
+
+        const tabIds = tabs.map(t => t.id);
+        const handleSwipe = (e) => {
+          const s = e._swipeXY; if (!s || viewMode.value !== 'tabs') return;
+          const dx = e.changedTouches[0].clientX - s.clientX;
+          const dy = e.changedTouches[0].clientY - s.clientY;
+          if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
+            const idx = tabIds.indexOf(activeTab.value);
+            if (dx < 0 && idx < tabIds.length - 1) activeTab.value = tabIds[idx + 1];
+            else if (dx > 0 && idx > 0) activeTab.value = tabIds[idx - 1];
+          }
+        };
+
         const formatDate = (t) => new Date(t).toLocaleDateString();
         const doExport = () => csvExport.doExport(toast);
 
@@ -976,7 +989,7 @@
           lastSync: cloudSync.lastSync, synced: cloudSync.synced,
           pushToGist: cloudSync.pushToGist, pullFromGist: cloudSync.pullFromGist,
           saveToken: cloudSync.saveToken, disconnect: cloudSync.disconnect,
-          enterLedger, formatDate
+          enterLedger, formatDate, handleSwipe
         };
       }
     };
