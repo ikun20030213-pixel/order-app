@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>接单助手</title>
+  <meta name="theme-color" content="#18181b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="接单助手">
+  <link rel="manifest" href="manifest.json">
+  <link href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/remixicon/3.5.0/remixicon.css" rel="stylesheet"
+        onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css';">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/vue/3.2.31/vue.global.prod.min.js"></script>
+  <script>
+    if (typeof Vue === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/vue@3.2.31/dist/vue.global.prod.min.js"><\/script>');
+    }
+  </script>
+  <style>
+    [v-cloak] { display: none !important; }
+    :root {
+      --accent: #10b981;
+      --accent-light: #f0fdf4;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --radius-lg: 2.5rem;
+      --radius-xl: 3rem;
+    }
+    body {
+      background: #f4f4f7;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      overflow: hidden;
+      margin: 0;
+    }
+    ::-webkit-scrollbar { display: none; }
+    .tab-active { color: #18181b; font-weight: 900; }
+    .tab-inactive { color: #a1a1aa; }
+    .calendar-day {
+      min-height: 70px;
+      font-size: 11px;
+      border-right: 1px solid #f1f1f1;
+      border-bottom: 1px solid #f1f1f1;
+      position: relative;
+      background: white;
+      transition: background 0.2s;
+    }
+    .calendar-day:active { background: #f9fafb; }
+    .mini-calendar-day {
+      height: 44px;
+      font-size: 12px;
+      border-right: 1px solid #f1f1f1;
+      border-bottom: 1px solid #f1f1f1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .mini-calendar-day:hover { background: #f0fdf4; }
+    .mini-calendar-day.selected { background: #18181b; color: white; font-weight: bold; border-radius: 8px; }
+    .drop-highlight {
+      border: 2px solid #22c55e !important;
+      background-color: #f0fdf4 !important;
+      transform: scale(1.02);
+      box-shadow: 0 15px 30px -5px rgba(34,197,94,0.3);
+    }
+    .sheet-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px); z-index: 2000;
+    }
+    .sheet-float {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+      width: min(320px, calc(100vw - 32px));
+      background: white; border-radius: var(--radius-lg); padding: 1.8rem;
+      z-index: 2001; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.5);
+      border: 1px solid #eee; max-height: 85vh; overflow-y: auto;
+    }
+    .sheet-up-enter-active, .sheet-up-leave-active {
+      transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .sheet-up-enter-from, .sheet-up-leave-to {
+      transform: translateY(120%) translateX(-50%);
+      opacity: 0;
+    }
+    .sticker-emoji {
+      font-size: 18px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+    }
+    .toast-enter-active { transition: all 0.3s ease-out; }
+    .toast-leave-active { transition: all 0.2s ease-in; }
+    .toast-enter-from { opacity: 0; transform: translateY(-20px); }
+    .toast-leave-to { opacity: 0; transform: translateY(-10px); }
+    .filter-pill { padding: 4px 12px; border-radius: 9999px; font-size: 10px; font-weight: 700; transition: all 0.15s; }
+    .filter-pill-active { background: #18181b; color: white; }
+    .filter-pill-inactive { background: #f4f4f7; color: #71717a; }
+  </style>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <!-- Toast -->
+    <transition name="toast">
+      <div v-if="toastMsg" class="fixed top-10 left-1/2 -translate-x-1/2 z-[3000] bg-zinc-900 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-2xl">
+        {{ toastMsg }}
+      </div>
+    </transition>
+
+    <!-- ========== 主视图 ========== -->
+    <div v-if="viewMode === 'tabs'" class="max-w-md mx-auto bg-white min-h-screen relative shadow-2xl flex flex-col h-full sm:border-x border-zinc-200">
+      <header class="px-6 pt-12 pb-4 bg-white sticky top-0 z-20 flex justify-between items-center">
+        <h1 class="text-3xl font-black tracking-tighter">
+          {{ activeTab === 'ledgers' ? '项目' : activeTab === 'todo' ? '待制作' : activeTab === 'stats' ? '看板' : currentMonthDisplay }}
+        </h1>
+        <div class="flex gap-2 items-center">
+          <button v-if="activeTab === 'todo'" @click="prepareQuickEntry('', 0, true)" class="bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg">派单</button>
+          <template v-if="activeTab === 'stats'">
+            <button @click="showExportPanel = true" class="bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1"><i class="ri-download-line"></i> 导出</button>
+          </template>
+          <template v-if="activeTab === 'calendar'">
+            <button @click="changeMonth(-1)" aria-label="上个月" class="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-left-s-line"></i></button>
+            <button @click="changeMonth(1)" aria-label="下个月" class="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-right-s-line"></i></button>
+          </template>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto px-5 pb-40">
+        <!-- 账本列表 -->
+        <div v-if="activeTab === 'ledgers'" class="space-y-4 pt-2">
+          <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">拖拽底部"+"号创建账本</p></div>
+          <div v-for="ledger in ledgers" :key="ledger.id" @click="enterLedger(ledger.id)" :data-id="ledger.id" :class="['ledger-card p-6 rounded-[var(--radius-lg)] border bg-zinc-50 border-zinc-100 flex justify-between transition-all', hoveredLedgerId===ledger.id?'drop-highlight':'shadow-sm']">
+            <div class="flex-1 min-w-0"><p class="text-[10px] font-bold text-emerald-500 uppercase mb-1">实收项目金</p><div class="flex items-baseline gap-1"><span class="text-xs font-black">¥</span><span class="text-3xl font-black truncate text-zinc-900">{{ getLedgerStats(ledger.id).paid }}</span></div><h3 class="mt-2 text-sm font-bold text-zinc-400 truncate"># {{ ledger.name }}</h3></div>
+            <div class="text-right pl-2"><p class="text-[10px] font-bold text-zinc-400 uppercase">待结</p><p class="text-sm font-black text-zinc-300">¥{{ getLedgerStats(ledger.id).receivable }}</p></div>
+          </div>
+        </div>
+
+        <!-- 待制作 -->
+        <div v-if="activeTab==='todo'" class="space-y-4 pt-2">
+          <div v-if="pendingOrders.length===0" class="py-20 text-center text-zinc-300"><i class="ri-checkbox-circle-line text-5xl block mb-4 text-zinc-200"></i><p class="text-sm">全部活儿都干完了</p></div>
+          <div v-for="order in pendingOrders" :key="order.id" class="bg-orange-50 p-5 rounded-[var(--radius-lg)] border border-orange-100 flex justify-between items-center">
+            <div class="flex-1 pr-4"><p class="font-bold text-zinc-800 text-sm">{{ order.customer }}</p><p class="text-[10px] text-orange-400 font-bold uppercase mt-1">{{ getLedgerName(order.ledgerId) }} · ¥{{ order.amount }}</p></div>
+            <button @click="markAsProduced(order.id)" class="bg-zinc-900 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-90">完工</button>
+          </div>
+        </div>
+
+        <!-- 看板 -->
+        <div v-if="activeTab==='stats'" class="space-y-4 pt-2 pb-4">
+          <div class="bg-zinc-900 p-7 rounded-[var(--radius-xl)] text-white shadow-2xl">
+            <div class="flex justify-between items-end mb-4"><div><p class="text-[10px] text-zinc-500">实收资产</p><p class="text-5xl font-black">¥{{ totalPaid }}</p></div><div class="text-right"><p class="text-[10px] text-zinc-400">待收欠款</p><p class="text-xl font-bold text-zinc-200">¥{{ totalReceivable }}</p></div></div>
+            <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden"><div class="h-full bg-emerald-400 transition-all duration-700" :style="{width:paidRatio+'%'}"></div></div>
+            <p class="text-[9px] text-zinc-500 mt-3 font-bold text-center">回笼率 {{ paidRatio }}%</p>
+          </div>
+          <div class="bg-white p-4 rounded-[var(--radius-lg)] shadow-sm border border-zinc-100">
+            <h3 class="text-xs font-black text-zinc-500 uppercase mb-3 ml-2">本月每日收入</h3>
+            <div v-if="totalPaid > 0" class="w-full h-48"><canvas id="dailyBarChart"></canvas></div>
+            <div v-else class="h-48 flex items-center justify-center text-zinc-300 text-xs">暂无数据</div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white p-4 rounded-[var(--radius-lg)] shadow-sm border border-zinc-100">
+              <h3 class="text-xs font-black text-zinc-500 uppercase mb-2 ml-1">账本占比</h3>
+              <div v-if="totalPaid > 0" class="w-full h-40"><canvas id="pieChart"></canvas></div>
+              <div v-else class="h-40 flex items-center justify-center text-zinc-300 text-xs">暂无数据</div>
+            </div>
+            <div class="bg-white p-4 rounded-[var(--radius-lg)] shadow-sm border border-zinc-100">
+              <h3 class="text-xs font-black text-zinc-500 uppercase mb-2 ml-1">近7天趋势</h3>
+              <div v-if="totalPaid > 0" class="w-full h-40"><canvas id="lineChart"></canvas></div>
+              <div v-else class="h-40 flex items-center justify-center text-zinc-300 text-xs">暂无数据</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 日历 -->
+        <div v-if="activeTab==='calendar'" class="pt-2">
+          <div class="grid grid-cols-7 mb-3 text-center text-[10px] font-black text-zinc-300">
+            <div v-for="d in ['日','一','二','三','四','五','六']">{{d}}</div>
+          </div>
+          <div class="grid grid-cols-7 border-t border-l border-zinc-100 rounded-[var(--radius-lg)] overflow-hidden shadow-sm bg-white">
+            <div v-for="day in calendarDays" :key="day.fullDate" @click="openStickerPicker(day)" :class="['calendar-day p-1 flex flex-col items-center', day.isCurrentMonth?'bg-white':'bg-zinc-50/50 opacity-30']">
+              <span :class="day.isToday?'text-emerald-500 font-black':'text-zinc-500'" class="text-xs mt-0.5">{{ day.dateNum }}</span>
+              <div class="flex flex-wrap justify-center gap-0.5 mt-0.5 max-w-[90%]">
+                <span v-for="(sticker,idx) in getDayStickers(day.fullDate)" :key="idx" class="sticker-emoji leading-none">{{ sticker }}</span>
+              </div>
+              <div v-if="hasPaidOrder(day.fullDate)" class="absolute top-1 right-1 w-2 h-2 bg-emerald-400 rounded-full"></div>
+              <div v-if="getDayOrdersCount(day.fullDate)" class="text-[8px] text-zinc-400 mt-auto pb-0.5">{{ getDayOrdersCount(day.fullDate) }}单</div>
+            </div>
+          </div>
+          <div class="mt-6 bg-amber-50 p-5 rounded-[var(--radius-lg)] border border-amber-200">
+            <p class="text-xs font-black text-amber-700 mb-3 flex items-center gap-2"><i class="ri-sticker-line"></i> 常用贴纸</p>
+            <div class="flex flex-wrap gap-2">
+              <button v-for="emoji in stickerLibrary" :key="emoji" @click="addStickerToSelectedDay(emoji)" class="text-xl p-2 bg-white rounded-xl shadow-sm active:scale-90 transition-transform">{{ emoji }}</button>
+            </div>
+            <button @click="clearDayStickers" class="mt-3 text-[10px] font-bold text-red-400 underline">清除当日贴纸</button>
+          </div>
+        </div>
+      </main>
+
+      <!-- 底部导航 -->
+      <nav class="absolute bottom-0 w-full bg-white/90 backdrop-blur-xl border-t border-zinc-100 flex justify-around py-6 px-4 z-[100]">
+        <button v-for="tab in tabs" :key="tab.id" @click="activeTab=tab.id" :aria-label="tab.n" :class="activeTab===tab.id?'tab-active scale-110':'tab-inactive'" class="flex flex-col items-center gap-1 transition-all">
+          <i :class="tab.icon" class="text-2xl"></i><span class="text-[9px] uppercase font-bold">{{ tab.n }}</span>
+        </button>
+      </nav>
+      <div v-if="activeTab==='ledgers'" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[200]">
+        <div @touchstart.prevent="startMainDrag" @mousedown.prevent="startMainDrag" aria-label="创建账本或入账" class="w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-4xl shadow-2xl active:scale-90 transition-transform cursor-grab select-none"><i class="ri-add-line"></i></div>
+      </div>
+    </div>
+
+    <!-- ========== 详情页 ========== -->
+    <div v-if="viewMode==='detail'" class="max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl sm:border-x border-zinc-200">
+      <header class="px-4 py-5 border-b flex items-center gap-2 bg-white sticky top-0 z-10">
+        <button @click="viewMode='tabs'; searchQuery=''; statusFilter='all'" aria-label="返回" class="w-12 h-12 rounded-full flex items-center justify-center"><i class="ri-arrow-left-s-line text-3xl"></i></button>
+        <h2 class="flex-1 text-lg font-black truncate">{{ currentLedger?.name || '' }}</h2>
+        <button @click="deleteLedger" aria-label="删除账本" class="text-zinc-300 p-2"><i class="ri-delete-bin-line text-xl"></i></button>
+      </header>
+
+      <!-- 搜索和筛选 -->
+      <div class="px-6 pt-4 pb-2 space-y-3 sticky top-[73px] bg-white z-10">
+        <div class="relative">
+          <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-zinc-300 text-sm"></i>
+          <input v-model="searchQuery" placeholder="搜索客户或备注..." class="w-full bg-zinc-50 rounded-xl pl-9 pr-8 py-2.5 text-xs font-bold">
+          <button v-if="searchQuery" @click="searchQuery=''" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300"><i class="ri-close-line"></i></button>
+        </div>
+        <div class="flex gap-2">
+          <button v-for="f in statusFilters" :key="f.value" @click="statusFilter=f.value" :class="statusFilter===f.value?'filter-pill-active':'filter-pill-inactive'" class="filter-pill">{{ f.label }}</button>
+        </div>
+      </div>
+
+      <main class="flex-1 overflow-y-auto p-6 pb-24">
+        <div class="bg-zinc-900 text-white p-8 rounded-[var(--radius-xl)] shadow-xl mb-10 text-center"><p class="text-[10px] text-zinc-500 mb-1">实收净收益</p><p class="text-4xl font-black">¥ {{ currentStats.paid }}</p></div>
+
+        <!-- 搜索无结果 -->
+        <div v-if="hasActiveFilter && filteredGroupedRecords.reduce((s,g)=>s+g.items.length,0)===0" class="py-16 text-center text-zinc-300">
+          <i class="ri-search-line text-4xl block mb-3"></i>
+          <p class="text-sm">没有匹配的记录</p>
+        </div>
+
+        <div v-for="group in filteredGroupedRecords" :key="group.partitionId" class="mb-10">
+          <div class="flex justify-between items-end mb-4 border-b-2 pb-2"><h4 class="text-sm font-black">{{ group.name }}</h4><span class="text-[10px] font-bold text-zinc-400">¥{{ group.subtotal }}</span></div>
+          <div v-for="record in group.items" :key="record.id" class="bg-zinc-50 p-5 rounded-[2rem] flex items-center gap-4 mb-3">
+            <div @click="toggleRecordStatus(record)" class="cursor-pointer active:scale-125"><i v-if="record.status==='paid'" class="ri-checkbox-circle-fill text-emerald-500 text-2xl"></i><i v-else-if="record.status==='produced'" class="ri-checkbox-blank-circle-line text-zinc-300 text-2xl"></i><i v-else class="ri-time-line text-orange-400 text-2xl"></i></div>
+            <div @click="startEdit(record)" class="flex-1 cursor-pointer"><div class="flex justify-between font-bold text-sm"><span class="truncate">{{ record.customer }}</span><span :class="record.status==='paid'?'text-zinc-900':'text-zinc-400'">¥{{ record.amount }}</span></div><p class="text-[9px] text-zinc-400 mt-1">{{ formatDate(record.date) }} <span v-if="record.note">· {{record.note}}</span></p></div>
+            <button @click="deleteRecord(record.id)" aria-label="删除记录" class="text-zinc-200"><i class="ri-close-line text-xl"></i></button>
+          </div>
+        </div>
+        <button @click="createPartition" class="w-full py-4 border-2 border-dashed border-zinc-100 rounded-[var(--radius-lg)] text-zinc-300 font-bold text-xs">+ 新增分类分区</button>
+      </main>
+    </div>
+
+    <!-- 快速入账/编辑面板 -->
+    <div v-if="showQuickSheet" class="sheet-mask" @click="showQuickSheet=false"></div>
+    <transition name="sheet-up">
+      <div v-if="showQuickSheet" class="sheet-float">
+        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"></div>
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-black">{{ isEditing ? '编辑记录' : '入账确认' }}</h2>
+          <p class="text-2xl font-black text-emerald-500">¥{{ quickForm.amount }}</p>
+        </div>
+        <div class="space-y-3">
+          <div v-if="!quickForm.ledgerId" class="bg-zinc-50 p-4 rounded-2xl">
+            <label class="text-[9px] font-bold block mb-1">目标项目</label>
+            <select v-model="selectedLedgerForQuick" class="w-full bg-transparent font-bold text-xs">
+              <option value="">选择账本...</option>
+              <option v-for="l in ledgers" :value="l.id">{{ l.name }}</option>
+            </select>
+          </div>
+          <div class="bg-zinc-50 p-4 rounded-2xl">
+            <div class="flex justify-between items-center" @click="toggleDatePicker">
+              <label class="text-[9px] font-bold text-zinc-400 uppercase">日期</label>
+              <span class="font-bold text-sm text-zinc-800">{{ quickForm.date }}</span>
+              <i class="ri-calendar-line text-zinc-400"></i>
+            </div>
+            <div v-if="showDatePicker" class="mt-3 pt-3 border-t border-zinc-100">
+              <div class="flex justify-between items-center mb-2">
+                <button @click.stop="changePickerMonth(-1)" aria-label="上个月" class="w-6 h-6 bg-zinc-100 rounded-full flex items-center justify-center text-xs"><i class="ri-arrow-left-s-line"></i></button>
+                <span class="text-xs font-bold">{{ pickerMonthDisplay }}</span>
+                <button @click.stop="changePickerMonth(1)" aria-label="下个月" class="w-6 h-6 bg-zinc-100 rounded-full flex items-center justify-center text-xs"><i class="ri-arrow-right-s-line"></i></button>
+              </div>
+              <div class="grid grid-cols-7 text-center text-[9px] font-bold text-zinc-400 mb-1">
+                <div v-for="d in ['日','一','二','三','四','五','六']">{{d}}</div>
+              </div>
+              <div class="grid grid-cols-7 border-t border-l border-zinc-100 rounded-xl overflow-hidden">
+                <div v-for="day in pickerCalendarDays" :key="day.fullDate"
+                     @click.stop="selectPickerDate(day.fullDate)"
+                     :class="['mini-calendar-day', day.isCurrentMonth ? 'bg-white' : 'bg-zinc-50/30 text-zinc-300',
+                              quickForm.date === day.isoDate ? 'selected' : '']">
+                  {{ day.dateNum }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-zinc-50 p-4 rounded-2xl flex justify-between">
+            <label class="text-[9px] font-bold">金额</label>
+            <input v-model.number="quickForm.amount" type="number" class="bg-transparent font-black text-right w-24 text-sm">
+          </div>
+          <div class="bg-zinc-50 p-4 rounded-2xl">
+            <label class="text-[9px] font-bold block">名称</label>
+            <input v-model="quickForm.customer" placeholder="客户名称" class="w-full bg-transparent font-bold">
+          </div>
+          <div class="bg-zinc-50 p-4 rounded-2xl">
+            <label class="text-[9px] font-bold block">备注</label>
+            <input v-model="quickForm.note" placeholder="可选" class="w-full bg-transparent">
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button v-for="p in currentPartitions" @click="quickForm.partitionId=p.id" :class="quickForm.partitionId===p.id?'bg-zinc-900 text-white':'bg-zinc-100'" class="px-3 py-1.5 rounded-xl text-[9px] font-bold">{{p.name}}</button>
+            <button @click="quickForm.partitionId=''" :class="quickForm.partitionId===''?'bg-zinc-900 text-white':'bg-zinc-100'" class="px-3 py-1.5 rounded-xl text-[9px]">默认</button>
+          </div>
+        </div>
+        <button @click="submitQuickEntry" class="w-full bg-zinc-900 text-white py-4 rounded-[var(--radius-lg)] font-black mt-6">{{ isEditing ? '保 存 修 改' : '确 认 记 入' }}</button>
+      </div>
+    </transition>
+
+    <!-- 统一导出面板 -->
+    <div v-if="showExportPanel" class="sheet-mask" @click="showExportPanel=false"></div>
+    <transition name="sheet-up">
+      <div v-if="showExportPanel" class="sheet-float">
+        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"></div>
+        <h2 class="text-xl font-black mb-4">导出数据</h2>
+        <div class="space-y-3">
+          <div class="bg-zinc-50 p-4 rounded-2xl">
+            <label class="text-[9px] font-bold block mb-2">导出范围</label>
+            <div class="flex gap-2">
+              <button @click="exportScope='all'" :class="exportScope==='all'?'bg-zinc-900 text-white':'bg-zinc-100'" class="flex-1 py-2 rounded-xl text-xs font-bold">全部账本</button>
+              <button @click="exportScope='ledger'" :class="exportScope==='ledger'?'bg-zinc-900 text-white':'bg-zinc-100'" class="flex-1 py-2 rounded-xl text-xs font-bold">指定账本</button>
+            </div>
+          </div>
+          <div v-if="exportScope==='ledger'" class="bg-zinc-50 p-4 rounded-2xl">
+            <label class="text-[9px] font-bold block mb-1">选择账本</label>
+            <select v-model="exportLedgerId" class="w-full bg-transparent font-bold text-xs">
+              <option value="">请选择...</option>
+              <option v-for="l in ledgers" :value="l.id">{{ l.name }}</option>
+            </select>
+          </div>
+          <div class="bg-zinc-50 p-4 rounded-2xl">
+            <label class="text-[9px] font-bold block mb-1">开始日期（可选）</label>
+            <input type="date" v-model="exportStartDate" class="w-full bg-transparent font-bold text-sm">
+          </div>
+          <div class="bg-zinc-50 p-4 rounded-2xl">
+            <label class="text-[9px] font-bold block mb-1">结束日期（可选）</label>
+            <input type="date" v-model="exportEndDate" class="w-full bg-transparent font-bold text-sm">
+          </div>
+        </div>
+        <div class="flex gap-2 mt-6">
+          <button @click="doExport" class="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-black">导出CSV</button>
+          <button @click="showExportPanel=false" class="px-6 py-4 text-zinc-500 font-bold">取消</button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 贴纸选择器 -->
+    <div v-if="showStickerPicker" class="sheet-mask" @click="showStickerPicker=false"></div>
+    <transition name="sheet-up"><div v-if="showStickerPicker" class="sheet-float text-center"><p class="text-sm font-black mb-3">选择贴纸 · {{ selectedDayForSticker?.dateNum }}日</p><div class="flex flex-wrap justify-center gap-2 mb-4"><button v-for="e in stickerLibrary" @click="addStickerToDay(e); showStickerPicker=false" class="text-2xl p-2 bg-zinc-50 rounded-xl">{{e}}</button></div><button @click="removeLastSticker(); showStickerPicker=false" class="text-xs text-red-400 font-bold">移除最后一个</button></div></transition>
+
+    <!-- 自定义确认/输入对话框 -->
+    <div v-if="dialog.show" class="sheet-mask flex items-center justify-center p-8" @click="cancelDialog">
+      <div class="bg-white w-full max-w-[300px] rounded-[var(--radius-xl)] p-8 shadow-2xl text-center" @click.stop>
+        <h2 class="text-xl font-black mb-4">{{ dialog.title }}</h2>
+        <p v-if="dialog.type==='confirm'" class="text-sm text-zinc-400 mb-6">{{ dialog.message }}</p>
+        <input v-if="dialog.type==='prompt'" v-model="dialog.inputValue" :placeholder="dialog.placeholder" class="w-full bg-zinc-50 rounded-2xl p-4 mb-6 text-center font-bold">
+        <button @click="confirmDialog" class="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black">确认</button>
+        <button @click="cancelDialog" class="w-full py-2 text-zinc-400 font-bold text-[10px] mt-2">取消</button>
+      </div>
+    </div>
+
+    <!-- 创建账本 -->
+    <div v-if="showLedgerModal" class="sheet-mask flex items-center justify-center p-8" @click="showLedgerModal=false"><div class="bg-white w-full max-w-[300px] rounded-[var(--radius-xl)] p-8 shadow-2xl text-center" @click.stop><h2 class="text-xl font-black mb-6">新建项目</h2><input v-model="newLedgerName" placeholder="账本名称" class="w-full bg-zinc-50 rounded-2xl p-4 mb-8 text-center font-bold"><button @click="createLedger" class="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black">确认创建</button><button @click="showLedgerModal=false" class="w-full py-2 text-zinc-400 font-bold text-[10px] mt-2">取消</button></div></div>
+
+    <!-- 拖拽幽灵 -->
+    <div v-if="isMainDragging" class="fixed z-[9999] pointer-events-none w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-3xl shadow-2xl" :style="{left:dragPos.x+'px',top:dragPos.y+'px',transform:'translate(-50%,-50%) rotate(5deg)'}"><i class="ri-add-line"></i></div>
+  </div>
+
+  <script>
+  (function() {
+    if (typeof Vue === 'undefined') { setTimeout(arguments.callee, 100); return; }
+    const { createApp, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } = Vue;
+
+    // ===== 工具函数 =====
+    let _idCounter = 0;
+    function generateId(prefix) { return `${prefix}-${Date.now()}-${(++_idCounter).toString(36)}`; }
+    function toLocalISODate(date) { date = date || new Date(); return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
+    function csvEscape(field) { const str = String(field ?? ''); return (str.includes(',') || str.includes('"') || str.includes('\n')) ? '"' + str.replace(/"/g, '""') + '"' : str; }
+    function sumAmount(arr) { return arr.reduce((s, r) => s + Number(r.amount), 0).toFixed(0); }
+    function generateCalendarDays(year, month) {
+      const days = []; const start = new Date(year, month, 1); const end = new Date(year, month + 1, 0);
+      for (let i = start.getDay(); i > 0; i--) { const prev = new Date(year, month, 1 - i); days.push({ dateNum: prev.getDate(), fullDate: prev.toDateString(), isoDate: toLocalISODate(prev), isCurrentMonth: false }); }
+      for (let i = 1; i <= end.getDate(); i++) { const curr = new Date(year, month, i); days.push({ dateNum: i, fullDate: curr.toDateString(), isoDate: toLocalISODate(curr), isCurrentMonth: true, isToday: curr.toDateString() === new Date().toDateString() }); }
+      const remainder = days.length % 7;
+      if (remainder !== 0) { for (let i = 1; i <= 7 - remainder; i++) { const next = new Date(year, month + 1, i); days.push({ dateNum: i, fullDate: next.toDateString(), isoDate: toLocalISODate(next), isCurrentMonth: false }); } }
+      return days;
+    }
+
+    const CONFIG = {
+      STORAGE_KEYS: { LEDGERS: 'ws_pro_v21_ledgers', RECORDS: 'ws_pro_v21_records', PARTITIONS: 'ws_pro_v21_parts', STICKERS: 'ws_pro_v21_stickers' },
+      DEFAULT_AMOUNT: 30, STICKER_LIBRARY: ['🌟','✅','🔥','💡','🎯','📌','❤️','🎉','⭐','🍀','💪','📅'],
+      CHART_COLORS: ['#10b981','#f59e0b','#3b82f6','#ef4444','#8b5cf6'], TOAST_DURATION: 2000, SAVE_DEBOUNCE: 100
+    };
+
+    // ===== Composable: useToast =====
+    function useToast() {
+      const toastMsg = ref(''); let timer = null;
+      const showToast = (m) => { clearTimeout(timer); toastMsg.value = m; timer = setTimeout(() => toastMsg.value = '', CONFIG.TOAST_DURATION); };
+      return { toastMsg, showToast };
+    }
+
+    // ===== Composable: useDialog =====
+    function useDialog() {
+      const dialog = ref({ show: false, type: 'confirm', title: '', message: '', placeholder: '', inputValue: '', resolve: null });
+      const showConfirm = (title, message) => new Promise(resolve => { dialog.value = { show: true, type: 'confirm', title, message, placeholder: '', inputValue: '', resolve }; });
+      const showPrompt = (title, placeholder) => new Promise(resolve => { dialog.value = { show: true, type: 'prompt', title, message: '', placeholder, inputValue: '', resolve }; });
+      const confirmDialog = () => { if (dialog.value.resolve) dialog.value.resolve(dialog.value.type === 'prompt' ? dialog.value.inputValue : true); dialog.value.show = false; };
+      const cancelDialog = () => { if (dialog.value.resolve) dialog.value.resolve(dialog.value.type === 'prompt' ? null : false); dialog.value.show = false; };
+      return { dialog, showConfirm, showPrompt, confirmDialog, cancelDialog };
+    }
+
+    // ===== Composable: useStorage =====
+    function useStorage() {
+      const ledgers = ref([]); const records = ref([]); const partitions = ref([]); const stickers = ref({}); let saveTimer = null;
+      const loadData = () => {
+        try {
+          ledgers.value = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.LEDGERS) || '[]');
+          records.value = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.RECORDS) || '[]');
+          partitions.value = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.PARTITIONS) || '[]');
+          stickers.value = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.STICKERS) || '{}');
+          const initialCount = records.value.length;
+          records.value = records.value.filter(r => ledgers.value.some(l => l.id === r.ledgerId));
+          partitions.value = partitions.value.filter(p => ledgers.value.some(l => l.id === p.ledgerId));
+          if (records.value.length < initialCount) { console.warn(`已清理 ${initialCount - records.value.length} 条孤立记录`); saveData(); }
+        } catch (e) { console.error('数据加载失败:', e); ledgers.value = []; records.value = []; partitions.value = []; stickers.value = {}; }
+      };
+      const saveData = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => { localStorage.setItem(CONFIG.STORAGE_KEYS.LEDGERS, JSON.stringify(ledgers.value)); localStorage.setItem(CONFIG.STORAGE_KEYS.RECORDS, JSON.stringify(records.value)); localStorage.setItem(CONFIG.STORAGE_KEYS.PARTITIONS, JSON.stringify(partitions.value)); localStorage.setItem(CONFIG.STORAGE_KEYS.STICKERS, JSON.stringify(stickers.value)); }, CONFIG.SAVE_DEBOUNCE); };
+      onMounted(loadData);
+      return { ledgers, records, partitions, stickers, saveData };
+    }
+
+    // ===== Composable: useLedger =====
+    function useLedger(storage, toast, dialog) {
+      const currentLedgerId = ref(null); const showLedgerModal = ref(false); const newLedgerName = ref('');
+      const currentLedger = computed(() => storage.ledgers.value.find(l => l.id === currentLedgerId.value));
+      const ledgerStatsMap = computed(() => { const map = {}; for (const ledger of storage.ledgers.value) { const rs = storage.records.value.filter(r => r.ledgerId === ledger.id); map[ledger.id] = { paid: sumAmount(rs.filter(r => r.status === 'paid')), receivable: sumAmount(rs.filter(r => r.status === 'produced')) }; } return map; });
+      const getLedgerStats = (id) => ledgerStatsMap.value[id] || { paid: '0', receivable: '0' };
+      const getLedgerName = (id) => storage.ledgers.value.find(l => l.id === id)?.name || '已删除';
+      const totalPaid = computed(() => sumAmount(storage.records.value.filter(r => r.status === 'paid')));
+      const totalReceivable = computed(() => sumAmount(storage.records.value.filter(r => r.status === 'produced')));
+      const paidRatio = computed(() => { const p = Number(totalPaid.value), r = Number(totalReceivable.value); return (p + r) === 0 ? 0 : Math.round((p / (p + r)) * 100); });
+      const enterLedger = (id) => { currentLedgerId.value = id; };
+      const createLedger = () => { if (!newLedgerName.value.trim()) return; storage.ledgers.value.push({ id: generateId('L'), name: newLedgerName.value.trim() }); storage.saveData(); showLedgerModal.value = false; newLedgerName.value = ''; toast.showToast('项目已创建'); };
+      const deleteLedger = async () => { const ok = await dialog.showConfirm('删除账本', '删除账本将同时删除该账本下的所有订单记录和分区，不可恢复。'); if (!ok) return; const targetId = currentLedgerId.value; storage.ledgers.value = storage.ledgers.value.filter(l => l.id !== targetId); storage.partitions.value = storage.partitions.value.filter(p => p.ledgerId !== targetId); storage.records.value = storage.records.value.filter(r => r.ledgerId !== targetId); storage.saveData(); currentLedgerId.value = null; toast.showToast('账本已删除'); };
+      return { currentLedgerId, currentLedger, showLedgerModal, newLedgerName, ledgerStatsMap, getLedgerStats, getLedgerName, totalPaid, totalReceivable, paidRatio, enterLedger, createLedger, deleteLedger };
+    }
+
+    // ===== Composable: useRecords =====
+    function useRecords(storage, ledger, toast, dialog) {
+      const quickForm = ref({ ledgerId: '', amount: CONFIG.DEFAULT_AMOUNT, customer: '', partitionId: '', note: '', date: toLocalISODate(), fromTodo: false });
+      const selectedLedgerForQuick = ref(''); const showQuickSheet = ref(false); const showDatePicker = ref(false); const pickerMonthDate = ref(new Date());
+      const isEditing = ref(false); const editingRecordId = ref(null);
+      const searchQuery = ref(''); const statusFilter = ref('all');
+      const statusFilters = [{ value: 'all', label: '全部' }, { value: 'pending', label: '制作中' }, { value: 'produced', label: '待结' }, { value: 'paid', label: '已收' }];
+      const hasActiveFilter = computed(() => searchQuery.value.trim() !== '' || statusFilter.value !== 'all');
+
+      const currentStats = computed(() => ({ paid: sumAmount(storage.records.value.filter(r => r.ledgerId === ledger.currentLedgerId.value && r.status === 'paid')) }));
+      const pendingOrders = computed(() => storage.records.value.filter(r => r.status === 'pending').sort((a, b) => b.date - a.date));
+
+      const groupedRecords = computed(() => {
+        const rs = storage.records.value.filter(r => r.ledgerId === ledger.currentLedgerId.value);
+        const ps = storage.partitions.value.filter(p => p.ledgerId === ledger.currentLedgerId.value);
+        const groups = ps.map(p => ({ partitionId: p.id, name: p.name, items: rs.filter(r => r.partitionId === p.id), subtotal: sumAmount(rs.filter(r => r.partitionId === p.id)) }));
+        const def = rs.filter(r => !r.partitionId);
+        if (def.length || groups.length === 0) groups.push({ partitionId: 'def', name: '常规流水', items: def, subtotal: sumAmount(def) });
+        return groups;
+      });
+
+      const filteredGroupedRecords = computed(() => {
+        const q = searchQuery.value.trim().toLowerCase();
+        const sf = statusFilter.value;
+        return groupedRecords.value.map(g => {
+          const items = g.items.filter(r => {
+            if (sf !== 'all' && r.status !== sf) return false;
+            if (q && !r.customer.toLowerCase().includes(q) && !(r.note || '').toLowerCase().includes(q)) return false;
+            return true;
+          });
+          return { ...g, items, subtotal: sumAmount(items) };
+        }).filter(g => g.items.length > 0);
+      });
+
+      const currentPartitions = computed(() => storage.partitions.value.filter(p => p.ledgerId === (quickForm.value.ledgerId || selectedLedgerForQuick.value)));
+      const pickerMonthDisplay = computed(() => pickerMonthDate.value.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' }));
+      const pickerCalendarDays = computed(() => generateCalendarDays(pickerMonthDate.value.getFullYear(), pickerMonthDate.value.getMonth()));
+      const toggleDatePicker = () => { showDatePicker.value = !showDatePicker.value; if (showDatePicker.value) { const parts = quickForm.value.date?.split('-') || []; pickerMonthDate.value = parts.length === 3 ? new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1) : new Date(); } };
+      const changePickerMonth = (offset) => { const d = new Date(pickerMonthDate.value); d.setMonth(d.getMonth() + offset); pickerMonthDate.value = d; };
+      const selectPickerDate = (fullDateStr) => { quickForm.value.date = toLocalISODate(new Date(fullDateStr)); showDatePicker.value = false; };
+
+      const prepareQuickEntry = (lid, amt, isTodo) => {
+        isEditing.value = false; editingRecordId.value = null;
+        quickForm.value = { ledgerId: lid || '', amount: amt || CONFIG.DEFAULT_AMOUNT, customer: '', partitionId: '', note: '', date: toLocalISODate(), fromTodo: !!isTodo };
+        selectedLedgerForQuick.value = ''; showQuickSheet.value = true; showDatePicker.value = false;
+      };
+
+      const startEdit = (record) => {
+        isEditing.value = true; editingRecordId.value = record.id;
+        quickForm.value = { ledgerId: record.ledgerId, amount: record.amount, customer: record.customer, partitionId: record.partitionId || '', note: record.note || '', date: toLocalISODate(new Date(record.date)), fromTodo: false };
+        selectedLedgerForQuick.value = ''; showQuickSheet.value = true; showDatePicker.value = false;
+      };
+
+      const submitQuickEntry = () => {
+        const lid = quickForm.value.ledgerId || selectedLedgerForQuick.value;
+        if (!lid) return toast.showToast('选择账本');
+        if (!quickForm.value.customer.trim()) return toast.showToast('输入名称');
+        let recordDate;
+        try { recordDate = new Date(quickForm.value.date + 'T00:00:00').getTime(); if (isNaN(recordDate)) recordDate = Date.now(); } catch { recordDate = Date.now(); }
+
+        if (isEditing.value) {
+          const r = storage.records.value.find(x => x.id === editingRecordId.value);
+          if (r) { r.ledgerId = lid; r.amount = Number(quickForm.value.amount) || 0; r.customer = quickForm.value.customer.trim(); r.partitionId = quickForm.value.partitionId; r.note = quickForm.value.note; r.date = recordDate; }
+          toast.showToast('记录已更新');
+        } else {
+          storage.records.value.unshift({ id: generateId('R'), ledgerId: lid, amount: Number(quickForm.value.amount) || 0, customer: quickForm.value.customer.trim(), partitionId: quickForm.value.partitionId, status: quickForm.value.fromTodo ? 'pending' : 'produced', note: quickForm.value.note, date: recordDate });
+          toast.showToast('记录已添加');
+        }
+        storage.saveData(); showQuickSheet.value = false;
+      };
+
+      const toggleRecordStatus = (r) => { if (r.status === 'pending') r.status = 'produced'; else if (r.status === 'produced') r.status = 'paid'; else r.status = 'produced'; storage.saveData(); };
+      const markAsProduced = (id) => { const r = storage.records.value.find(x => x.id === id); if (r) { r.status = 'produced'; storage.saveData(); toast.showToast('完工'); } };
+      const deleteRecord = async (id) => { const ok = await dialog.showConfirm('删除记录', '确定删除此记录？'); if (ok) { storage.records.value = storage.records.value.filter(r => r.id !== id); storage.saveData(); } };
+      const createPartition = async () => { const n = await dialog.showPrompt('新增分区', '分区名称'); if (n) { storage.partitions.value.push({ id: generateId('P'), ledgerId: ledger.currentLedgerId.value, name: n.trim() }); storage.saveData(); } };
+
+      return { quickForm, selectedLedgerForQuick, showQuickSheet, showDatePicker, pickerMonthDate, pickerMonthDisplay, pickerCalendarDays, isEditing, searchQuery, statusFilter, statusFilters, hasActiveFilter, currentStats, pendingOrders, groupedRecords, filteredGroupedRecords, currentPartitions, toggleDatePicker, changePickerMonth, selectPickerDate, prepareQuickEntry, startEdit, submitQuickEntry, toggleRecordStatus, markAsProduced, deleteRecord, createPartition };
+    }
+
+    // ===== Composable: useCalendar =====
+    function useCalendar(storage, toast) {
+      const currentMonthDate = ref(new Date()); const showStickerPicker = ref(false); const selectedDayForSticker = ref(null);
+      const currentMonthDisplay = computed(() => currentMonthDate.value.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' }));
+      const calendarDays = computed(() => generateCalendarDays(currentMonthDate.value.getFullYear(), currentMonthDate.value.getMonth()));
+      const dateIndexMap = computed(() => { const map = {}; for (const r of storage.records.value) { const dateStr = new Date(r.date).toDateString(); if (!map[dateStr]) map[dateStr] = { count: 0, hasPaid: false }; map[dateStr].count++; if (r.status === 'paid') map[dateStr].hasPaid = true; } return map; });
+      const getDayOrdersCount = (dateStr) => dateIndexMap.value[dateStr]?.count || 0;
+      const hasPaidOrder = (dateStr) => dateIndexMap.value[dateStr]?.hasPaid || false;
+      const getDayStickers = (dateStr) => storage.stickers.value[dateStr] || [];
+      const changeMonth = (offset) => { const d = new Date(currentMonthDate.value); d.setMonth(d.getMonth() + offset); currentMonthDate.value = d; };
+      const openStickerPicker = (day) => { selectedDayForSticker.value = day; showStickerPicker.value = true; };
+      const addStickerToDay = (emoji) => { if (!selectedDayForSticker.value) return; const key = selectedDayForSticker.value.fullDate; if (!storage.stickers.value[key]) storage.stickers.value[key] = []; storage.stickers.value[key].push(emoji); storage.saveData(); };
+      const addStickerToSelectedDay = (emoji) => { if (!selectedDayForSticker.value) { toast.showToast('请先点击日历日期'); return; } addStickerToDay(emoji); };
+      const removeLastSticker = () => { if (!selectedDayForSticker.value) return; const key = selectedDayForSticker.value.fullDate; if (storage.stickers.value[key]?.length) { storage.stickers.value[key].pop(); if (storage.stickers.value[key].length === 0) delete storage.stickers.value[key]; storage.saveData(); } };
+      const clearDayStickers = () => { if (!selectedDayForSticker.value) return; delete storage.stickers.value[selectedDayForSticker.value.fullDate]; storage.saveData(); toast.showToast('贴纸已清除'); };
+      return { currentMonthDate, currentMonthDisplay, calendarDays, showStickerPicker, selectedDayForSticker, getDayOrdersCount, hasPaidOrder, getDayStickers, changeMonth, openStickerPicker, addStickerToDay, addStickerToSelectedDay, removeLastSticker, clearDayStickers };
+    }
+
+    // ===== Composable: useCharts =====
+    function useCharts(records, ledgers) {
+      let barChart = null, pieChart = null, lineChart = null; let chartDebounce = null;
+      const renderCharts = () => {
+        const now = new Date(); const year = now.getFullYear(); const month = now.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const dailyIncome = Array(daysInMonth).fill(0);
+        records.value.filter(r => r.status === 'paid').forEach(r => { const d = new Date(r.date); if (d.getFullYear() === year && d.getMonth() === month) dailyIncome[d.getDate() - 1] += Number(r.amount); });
+        const barCtx = document.getElementById('dailyBarChart')?.getContext('2d');
+        if (barCtx) { const data = { labels: Array.from({ length: daysInMonth }, (_, i) => i + 1 + '日'), datasets: [{ label: '收入', data: dailyIncome, backgroundColor: CONFIG.CHART_COLORS[0], borderRadius: 6 }] }; const options = { responsive: true, maintainAspectRatio: false }; if (!barChart) barChart = new Chart(barCtx, { type: 'bar', data, options }); else { barChart.data = data; barChart.update('none'); } }
+        const pieCtx = document.getElementById('pieChart')?.getContext('2d');
+        if (pieCtx) { const ledgerMap = {}; records.value.filter(r => r.status === 'paid').forEach(r => { const name = ledgers.value.find(l => l.id === r.ledgerId)?.name || '已删除'; ledgerMap[name] = (ledgerMap[name] || 0) + Number(r.amount); }); const pData = { labels: Object.keys(ledgerMap), datasets: [{ data: Object.values(ledgerMap), backgroundColor: CONFIG.CHART_COLORS }] }; if (!pieChart) pieChart = new Chart(pieCtx, { type: 'pie', data: pData, options: { responsive: true } }); else { pieChart.data = pData; pieChart.update('none'); } }
+        const lineCtx = document.getElementById('lineChart')?.getContext('2d');
+        if (lineCtx) { const last7 = []; for (let i = 6; i >= 0; i--) { const d = new Date(now); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0); const next = new Date(d); next.setDate(next.getDate() + 1); last7.push(records.value.filter(r => { const rd = new Date(r.date); return rd >= d && rd < next && r.status === 'paid'; }).reduce((s, r) => s + Number(r.amount), 0)); } const lData = { labels: ['6天前', '5天前', '4天前', '3天前', '前天', '昨天', '今天'], datasets: [{ label: '收入', data: last7, borderColor: CONFIG.CHART_COLORS[0], backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.3 }] }; if (!lineChart) lineChart = new Chart(lineCtx, { type: 'line', data: lData, options: { responsive: true } }); else { lineChart.data = lData; lineChart.update('none'); } }
+      };
+      const debouncedRender = () => { clearTimeout(chartDebounce); chartDebounce = setTimeout(renderCharts, 300); };
+      onBeforeUnmount(() => { barChart?.destroy(); pieChart?.destroy(); lineChart?.destroy(); });
+      return { renderCharts: debouncedRender };
+    }
+
+    // ===== Composable: useDrag =====
+    function useDrag(storage, ledger, prepareQuickEntry) {
+      const isMainDragging = ref(false); const dragPos = ref({ x: 0, y: 0 }); const hoveredLedgerId = ref(null);
+      let currentOnMove = null; let currentOnEnd = null;
+      const updateDragPos = (e) => { const c = e.touches ? e.touches[0] : e; dragPos.value = { x: c.clientX, y: c.clientY }; };
+      const startMainDrag = (e) => {
+        isMainDragging.value = true; updateDragPos(e);
+        currentOnMove = (ev) => { ev.preventDefault(); updateDragPos(ev); const el = document.elementFromPoint(dragPos.value.x, dragPos.value.y); hoveredLedgerId.value = el?.closest?.('.ledger-card')?.getAttribute('data-id') || null; };
+        currentOnEnd = () => { try { if (isMainDragging.value) { if (hoveredLedgerId.value) prepareQuickEntry(hoveredLedgerId.value, CONFIG.DEFAULT_AMOUNT); else { ledger.showLedgerModal.value = true; ledger.newLedgerName.value = ''; } } } finally { isMainDragging.value = false; hoveredLedgerId.value = null; document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); currentOnMove = null; currentOnEnd = null; } };
+        document.addEventListener('touchmove', currentOnMove, { passive: false }); document.addEventListener('mousemove', currentOnMove); document.addEventListener('touchend', currentOnEnd); document.addEventListener('mouseup', currentOnEnd);
+      };
+      onBeforeUnmount(() => { if (currentOnMove) { document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); } if (currentOnEnd) { document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); } });
+      return { isMainDragging, dragPos, hoveredLedgerId, startMainDrag };
+    }
+
+    // ===== Composable: useExport =====
+    function useExport(records, ledgers) {
+      const showExportPanel = ref(false); const exportScope = ref('all'); const exportLedgerId = ref('');
+      const exportStartDate = ref(''); const exportEndDate = ref('');
+
+      const doExport = (toast) => {
+        let filtered = records.value;
+        if (exportScope.value === 'ledger') {
+          if (!exportLedgerId.value) return toast.showToast('请选择账本');
+          filtered = filtered.filter(r => r.ledgerId === exportLedgerId.value);
+        }
+        if (exportStartDate.value) { const start = new Date(exportStartDate.value); start.setHours(0, 0, 0, 0); filtered = filtered.filter(r => new Date(r.date) >= start); }
+        if (exportEndDate.value) { const end = new Date(exportEndDate.value); end.setHours(23, 59, 59, 999); filtered = filtered.filter(r => new Date(r.date) <= end); }
+        if (filtered.length === 0) return toast.showToast('无匹配记录');
+        let csv = "﻿日期,账本,客户,金额,状态,备注\n";
+        filtered.forEach(r => {
+          const l = ledgers.value.find(x => x.id === r.ledgerId)?.name || '已删除';
+          const s = r.status === 'paid' ? '已收' : (r.status === 'produced' ? '待结' : '制作中');
+          csv += [new Date(r.date).toLocaleDateString(), l, r.customer, r.amount, s, r.note || ''].map(csvEscape).join(',') + '\n';
+        });
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
+        const scopeName = exportScope.value === 'ledger' ? (ledgers.value.find(l => l.id === exportLedgerId.value)?.name || '账本') : '全部';
+        link.download = `${scopeName}_${toLocalISODate()}.csv`; link.click();
+        showExportPanel.value = false; toast.showToast('导出成功');
+      };
+
+      return { showExportPanel, exportScope, exportLedgerId, exportStartDate, exportEndDate, doExport };
+    }
+
+    // ===== 应用入口 =====
+    const App = {
+      setup() {
+        const viewMode = ref('tabs'); const activeTab = ref('ledgers');
+        const tabs = [{ id: 'ledgers', icon: 'ri-folder-line', n: '项目' }, { id: 'todo', icon: 'ri-task-line', n: '待制作' }, { id: 'stats', icon: 'ri-bar-chart-line', n: '看板' }, { id: 'calendar', icon: 'ri-calendar-line', n: '日历' }];
+        const stickerLibrary = CONFIG.STICKER_LIBRARY;
+
+        const toast = useToast(); const dialog = useDialog(); const storage = useStorage();
+        const ledger = useLedger(storage, toast, dialog);
+        const records = useRecords(storage, ledger, toast, dialog);
+        const calendar = useCalendar(storage, toast);
+        const charts = useCharts(storage.records, storage.ledgers);
+        const drag = useDrag(storage, ledger, records.prepareQuickEntry);
+        const csvExport = useExport(storage.records, storage.ledgers);
+
+        watch(() => storage.records.value.length, () => { if (activeTab.value === 'stats') charts.renderCharts(); });
+        watch(activeTab, (newTab) => { if (newTab === 'stats') nextTick(charts.renderCharts); });
+
+        const enterLedger = (id) => { ledger.enterLedger(id); viewMode.value = 'detail'; records.searchQuery.value = ''; records.statusFilter.value = 'all'; };
+        const formatDate = (t) => new Date(t).toLocaleDateString();
+        const doExport = () => csvExport.doExport(toast);
+
+        return {
+          viewMode, activeTab, tabs, stickerLibrary,
+          toastMsg: toast.toastMsg,
+          dialog: dialog.dialog, confirmDialog: dialog.confirmDialog, cancelDialog: dialog.cancelDialog,
+          ledgers: storage.ledgers, records: storage.records, partitions: storage.partitions, stickers: storage.stickers,
+          currentLedgerId: ledger.currentLedgerId, currentLedger: ledger.currentLedger,
+          showLedgerModal: ledger.showLedgerModal, newLedgerName: ledger.newLedgerName,
+          getLedgerStats: ledger.getLedgerStats, getLedgerName: ledger.getLedgerName,
+          totalPaid: ledger.totalPaid, totalReceivable: ledger.totalReceivable, paidRatio: ledger.paidRatio,
+          createLedger: ledger.createLedger, deleteLedger: ledger.deleteLedger,
+          quickForm: records.quickForm, selectedLedgerForQuick: records.selectedLedgerForQuick,
+          showQuickSheet: records.showQuickSheet, showDatePicker: records.showDatePicker,
+          pickerMonthDate: records.pickerMonthDate, pickerMonthDisplay: records.pickerMonthDisplay,
+          pickerCalendarDays: records.pickerCalendarDays, isEditing: records.isEditing,
+          searchQuery: records.searchQuery, statusFilter: records.statusFilter, statusFilters: records.statusFilters, hasActiveFilter: records.hasActiveFilter,
+          currentStats: records.currentStats, pendingOrders: records.pendingOrders,
+          groupedRecords: records.groupedRecords, filteredGroupedRecords: records.filteredGroupedRecords, currentPartitions: records.currentPartitions,
+          toggleDatePicker: records.toggleDatePicker, changePickerMonth: records.changePickerMonth,
+          selectPickerDate: records.selectPickerDate, prepareQuickEntry: records.prepareQuickEntry,
+          startEdit: records.startEdit, submitQuickEntry: records.submitQuickEntry,
+          toggleRecordStatus: records.toggleRecordStatus, markAsProduced: records.markAsProduced,
+          deleteRecord: records.deleteRecord, createPartition: records.createPartition,
+          currentMonthDisplay: calendar.currentMonthDisplay, calendarDays: calendar.calendarDays,
+          showStickerPicker: calendar.showStickerPicker, selectedDayForSticker: calendar.selectedDayForSticker,
+          getDayOrdersCount: calendar.getDayOrdersCount, hasPaidOrder: calendar.hasPaidOrder,
+          getDayStickers: calendar.getDayStickers, changeMonth: calendar.changeMonth,
+          openStickerPicker: calendar.openStickerPicker, addStickerToDay: calendar.addStickerToDay,
+          addStickerToSelectedDay: calendar.addStickerToSelectedDay, removeLastSticker: calendar.removeLastSticker,
+          clearDayStickers: calendar.clearDayStickers,
+          isMainDragging: drag.isMainDragging, dragPos: drag.dragPos,
+          hoveredLedgerId: drag.hoveredLedgerId, startMainDrag: drag.startMainDrag,
+          showExportPanel: csvExport.showExportPanel, exportScope: csvExport.exportScope,
+          exportLedgerId: csvExport.exportLedgerId, exportStartDate: csvExport.exportStartDate,
+          exportEndDate: csvExport.exportEndDate, doExport,
+          enterLedger, formatDate
+        };
+      }
+    };
+    createApp(App).mount('#app');
+  })();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
