@@ -92,7 +92,7 @@
       border: 1px solid #eee; max-height: 85vh; overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
-    .sheet-float input, .sheet-float select, .sheet-mask input { font-size: 16px !important; }
+    input, select, textarea { font-size: 16px !important; }
     .sheet-up-enter-active, .sheet-up-leave-active {
       transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
     }
@@ -109,6 +109,35 @@
     .toast-leave-active { transition: all 0.2s ease-in; }
     .toast-enter-from { opacity: 0; transform: translateY(-20px); }
     .toast-leave-to { opacity: 0; transform: translateY(-10px); }
+    .tab-slide-right-enter-active, .tab-slide-right-leave-active,
+    .tab-slide-left-enter-active, .tab-slide-left-leave-active { transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+    .tab-slide-right-enter-from { opacity: 0; transform: translateX(40px); }
+    .tab-slide-right-leave-to { opacity: 0; transform: translateX(-40px); }
+    .tab-slide-left-enter-from { opacity: 0; transform: translateX(-40px); }
+    .tab-slide-left-leave-to { opacity: 0; transform: translateX(40px); }
+    .status-spin-enter-active { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .status-spin-leave-active { transition: all 0.15s ease-in; }
+    .status-spin-enter-from { opacity: 0; transform: rotate(-180deg) scale(0.5); }
+    .status-spin-leave-to { opacity: 0; transform: rotate(180deg) scale(0.5); }
+    .list-item-enter-active { transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1); }
+    .list-item-leave-active { transition: all 0.3s ease-in; position: absolute; width: 100%; }
+    .list-item-enter-from { opacity: 0; transform: translateY(30px); }
+    .list-item-leave-to { opacity: 0; transform: translateX(60px); }
+    .list-item-move { transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); }
+    .num-bounce-enter-active { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .num-bounce-leave-active { transition: all 0.15s ease-in; }
+    .num-bounce-enter-from { opacity: 0; transform: scale(1.3); }
+    .num-bounce-leave-to { opacity: 0; transform: scale(0.7); }
+    .page-slide-enter-active, .page-slide-leave-active,
+    .page-slide-back-enter-active, .page-slide-back-leave-active { transition: all 0.35s cubic-bezier(0.32, 0.72, 0, 1); }
+    .page-slide-enter-from { opacity: 0; transform: translateX(100%); }
+    .page-slide-leave-to { opacity: 0; transform: translateX(-30%); }
+    .page-slide-back-enter-from { opacity: 0; transform: translateX(-30%); }
+    .page-slide-back-leave-to { opacity: 0; transform: translateX(100%); }
+    .drag-pop-enter-active { transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .drag-pop-leave-active { transition: all 0.15s ease-in; }
+    .drag-pop-enter-from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    .drag-pop-leave-to { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
     .filter-pill { padding: 4px 12px; border-radius: 9999px; font-size: 10px; font-weight: 700; transition: all 0.15s; }
     .filter-pill-active { background: #18181b; color: white; }
     .filter-pill-inactive { background: #f4f4f7; color: #71717a; }
@@ -124,7 +153,8 @@
     </transition>
 
     <!-- ========== 主视图 ========== -->
-    <div v-if="viewMode === 'tabs'" class="max-w-md mx-auto bg-white h-screen relative shadow-2xl flex flex-col sm:border-x border-zinc-200">
+    <transition name="page-slide-back" mode="out-in">
+    <div v-if="viewMode === 'tabs'" key="tabs" class="max-w-md mx-auto bg-white h-screen relative shadow-2xl flex flex-col sm:border-x border-zinc-200">
       <header class="px-6 pb-4 bg-white sticky top-0 z-20 flex justify-between items-center" style="padding-top: calc(3rem + env(safe-area-inset-top, 0px))">
         <h1 class="text-3xl font-black tracking-tighter">
           {{ activeTab === 'ledgers' ? '项目' : activeTab === 'todo' ? '待制作' : activeTab === 'stats' ? '看板' : currentMonthDisplay }}
@@ -143,16 +173,19 @@
 
       <main class="flex-1 overflow-y-auto px-5" style="padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px)); overscroll-behavior-y: contain;">
         <!-- 账本列表 -->
-        <div v-if="activeTab === 'ledgers'" class="space-y-4 pt-2">
-          <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">拖拽底部"+"号创建账本</p></div>
+        <transition :name="'tab-slide-' + tabDirection" mode="out-in">
+        <div v-show="activeTab === 'ledgers'" class="space-y-4 pt-2" key="ledgers">
+          <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">拖拽底部"¥"号创建账本</p></div>
+          <transition-group name="list-item">
           <div v-for="ledger in ledgers" :key="ledger.id" @click="enterLedger(ledger.id)" :data-id="ledger.id" :class="['ledger-card p-6 rounded-[var(--radius-lg)] border bg-zinc-50 border-zinc-100 flex justify-between transition-all', hoveredLedgerId===ledger.id?'drop-highlight':'shadow-sm']">
             <div class="flex-1 min-w-0"><p class="text-[10px] font-bold text-emerald-500 uppercase mb-1">实收项目金</p><div class="flex items-baseline gap-1"><span class="text-xs font-black">¥</span><span class="text-3xl font-black truncate text-zinc-900">{{ getLedgerStats(ledger.id).paid }}</span></div><h3 class="mt-2 text-sm font-bold text-zinc-400 truncate"># {{ ledger.name }}</h3></div>
             <div class="text-right pl-2"><p class="text-[10px] font-bold text-zinc-400 uppercase">待结</p><p class="text-sm font-black text-zinc-300">¥{{ getLedgerStats(ledger.id).receivable }}</p></div>
           </div>
+          </transition-group>
         </div>
 
         <!-- 待制作 -->
-        <div v-if="activeTab==='todo'" class="space-y-4 pt-2">
+        <div v-show="activeTab==='todo'" class="space-y-4 pt-2">
           <div v-if="pendingOrders.length===0" class="py-20 text-center text-zinc-300"><i class="ri-checkbox-circle-line text-5xl block mb-4 text-zinc-200"></i><p class="text-sm">全部活儿都干完了</p></div>
           <div v-for="order in pendingOrders" :key="order.id" class="bg-orange-50 p-5 rounded-[var(--radius-lg)] border border-orange-100 flex justify-between items-center">
             <div class="flex-1 pr-4"><p class="font-bold text-zinc-800 text-sm">{{ order.customer }}</p><p class="text-[10px] text-orange-400 font-bold uppercase mt-1">{{ getLedgerName(order.ledgerId) }} · ¥{{ order.amount }}</p></div>
@@ -161,9 +194,9 @@
         </div>
 
         <!-- 看板 -->
-        <div v-if="activeTab==='stats'" class="space-y-4 pt-2 pb-4">
+        <div v-show="activeTab==='stats'" class="space-y-4 pt-2 pb-4">
           <div class="bg-zinc-900 p-7 rounded-[var(--radius-xl)] text-white shadow-2xl">
-            <div class="flex justify-between items-end mb-4"><div><p class="text-[10px] text-zinc-500">实收资产</p><p class="text-5xl font-black">¥{{ totalPaid }}</p></div><div class="text-right"><p class="text-[10px] text-zinc-400">待收欠款</p><p class="text-xl font-bold text-zinc-200">¥{{ totalReceivable }}</p></div></div>
+            <div class="flex justify-between items-end mb-4"><div><p class="text-[10px] text-zinc-500">实收资产</p><transition name="num-bounce" mode="out-in"><p class="text-5xl font-black" :key="totalPaid">¥{{ totalPaid }}</p></transition></div><div class="text-right"><p class="text-[10px] text-zinc-400">待收欠款</p><transition name="num-bounce" mode="out-in"><p class="text-xl font-bold text-zinc-200" :key="totalReceivable">¥{{ totalReceivable }}</p></transition></div></div>
             <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden"><div class="h-full bg-emerald-400 transition-all duration-700" :style="{width:paidRatio+'%'}"></div></div>
             <p class="text-[9px] text-zinc-500 mt-3 font-bold text-center">回笼率 {{ paidRatio }}%</p>
           </div>
@@ -187,7 +220,7 @@
         </div>
 
         <!-- 日历 -->
-        <div v-if="activeTab==='calendar'" class="pt-2">
+        <div v-show="activeTab==='calendar'" class="pt-2">
           <div class="grid grid-cols-7 mb-3 text-center text-[10px] font-black text-zinc-300">
             <div v-for="d in ['日','一','二','三','四','五','六']">{{d}}</div>
           </div>
@@ -209,6 +242,7 @@
             <button @click="clearDayStickers" class="mt-3 text-[10px] font-bold text-red-400 underline">清除当日贴纸</button>
           </div>
         </div>
+        </transition>
       </main>
 
       <!-- 底部导航 -->
@@ -218,12 +252,14 @@
         </button>
       </nav>
       <div v-if="activeTab==='ledgers'" class="fixed left-1/2 -translate-x-1/2 z-[200]" style="bottom: calc(7rem + env(safe-area-inset-bottom, 0px))">
-        <div @touchstart.prevent="startMainDrag" @mousedown.prevent="startMainDrag" aria-label="创建账本或入账" class="w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-4xl shadow-2xl active:scale-90 transition-transform cursor-grab select-none"><i class="ri-add-line"></i></div>
+        <div @touchstart.prevent="startMainDrag" @mousedown.prevent="startMainDrag" aria-label="点击新建项目，拖拽到项目入账" class="w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-3xl font-black shadow-2xl active:scale-90 transition-transform cursor-grab select-none">¥</div>
       </div>
     </div>
+    </transition>
 
     <!-- ========== 详情页 ========== -->
-    <div v-if="viewMode==='detail'" class="max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl sm:border-x border-zinc-200">
+    <transition name="page-slide" mode="out-in">
+    <div v-if="viewMode==='detail'" key="detail" class="max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl sm:border-x border-zinc-200">
       <header class="px-4 border-b flex items-center gap-2 bg-white sticky top-0 z-10" style="padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)); padding-bottom: 1.25rem;">
         <button @click="viewMode='tabs'; searchQuery=''; statusFilter='all'" aria-label="返回" class="w-14 h-14 -ml-1 rounded-full flex items-center justify-center active:bg-zinc-100"><i class="ri-arrow-left-s-line text-3xl"></i></button>
         <h2 class="flex-1 text-lg font-black truncate">{{ currentLedger?.name || '' }}</h2>
@@ -243,7 +279,7 @@
       </div>
 
       <main class="flex-1 overflow-y-auto p-6 pb-24">
-        <div class="bg-zinc-900 text-white p-8 rounded-[var(--radius-xl)] shadow-xl mb-10 text-center"><p class="text-[10px] text-zinc-500 mb-1">实收净收益</p><p class="text-4xl font-black">¥ {{ currentStats.paid }}</p></div>
+        <div class="bg-zinc-900 text-white p-8 rounded-[var(--radius-xl)] shadow-xl mb-10 text-center"><p class="text-[10px] text-zinc-500 mb-1">实收净收益</p><transition name="num-bounce" mode="out-in"><p class="text-4xl font-black" :key="currentStats.paid">¥ {{ currentStats.paid }}</p></transition></div>
 
         <!-- 搜索无结果 -->
         <div v-if="hasActiveFilter && filteredGroupedRecords.reduce((s,g)=>s+g.items.length,0)===0" class="py-16 text-center text-zinc-300">
@@ -253,15 +289,18 @@
 
         <div v-for="group in filteredGroupedRecords" :key="group.partitionId" class="mb-10">
           <div class="flex justify-between items-end mb-4 border-b-2 pb-2"><h4 class="text-sm font-black">{{ group.name }}</h4><span class="text-[10px] font-bold text-zinc-400">¥{{ group.subtotal }}</span></div>
-          <div v-for="record in group.items" :key="record.id" class="bg-zinc-50 p-5 rounded-[2rem] flex items-center gap-4 mb-3">
-            <div @click="toggleRecordStatus(record)" class="cursor-pointer active:scale-125"><i v-if="record.status==='paid'" class="ri-checkbox-circle-fill text-emerald-500 text-2xl"></i><i v-else-if="record.status==='produced'" class="ri-checkbox-blank-circle-line text-zinc-300 text-2xl"></i><i v-else class="ri-time-line text-orange-400 text-2xl"></i></div>
+          <transition-group name="list-item">
+          <div v-for="record in group.items" :key="record.id" class="bg-zinc-50 p-5 rounded-[2rem] flex items-center gap-4 mb-3" @touchstart.passive="_lpTimer=setTimeout(()=>navigator.vibrate(15),400)" @touchend="clearTimeout(_lpTimer)" @touchmove="clearTimeout(_lpTimer)">
+            <div @click="toggleRecordStatus(record)" class="cursor-pointer active:scale-125 transition-transform duration-200"><transition name="status-spin" mode="out-in"><i :key="record.status" :class="record.status==='paid'?'ri-checkbox-circle-fill text-emerald-500':record.status==='produced'?'ri-checkbox-blank-circle-line text-zinc-300':'ri-time-line text-orange-400'" class="text-2xl"></i></transition></div>
             <div @click="startEdit(record)" class="flex-1 cursor-pointer"><div class="flex justify-between font-bold text-sm"><span class="truncate">{{ record.customer }}</span><span :class="record.status==='paid'?'text-zinc-900':'text-zinc-400'">¥{{ record.amount }}</span></div><p class="text-[9px] text-zinc-400 mt-1">{{ formatDate(record.date) }} <span v-if="record.note">· {{record.note}}</span></p></div>
             <button @click="deleteRecord(record.id)" aria-label="删除记录" class="text-zinc-200"><i class="ri-close-line text-xl"></i></button>
           </div>
+          </transition-group>
         </div>
         <button @click="createPartition" class="w-full py-4 border-2 border-dashed border-zinc-100 rounded-[var(--radius-lg)] text-zinc-300 font-bold text-xs">+ 新增分类分区</button>
       </main>
     </div>
+    </transition>
 
     <!-- 快速入账/编辑面板 -->
     <div v-if="showQuickSheet" class="sheet-mask" @click="showQuickSheet=false"></div>
@@ -369,7 +408,7 @@
 
     <!-- 自定义确认/输入对话框 -->
     <div v-if="dialog.show" class="sheet-mask flex items-center justify-center p-8" @click="cancelDialog">
-      <div class="bg-white w-full max-w-[300px] rounded-[var(--radius-xl)] p-8 shadow-2xl text-center" @click.stop>
+      <div class="bg-white w-full max-w-[300px] rounded-[var(--radius-xl)] p-8 shadow-2xl text-center" @click.stop @touchstart.stop>
         <h2 class="text-xl font-black mb-4">{{ dialog.title }}</h2>
         <p v-if="dialog.type==='confirm'" class="text-sm text-zinc-400 mb-6">{{ dialog.message }}</p>
         <input v-if="dialog.type==='prompt'" v-model="dialog.inputValue" :placeholder="dialog.placeholder" class="w-full bg-zinc-50 rounded-2xl p-4 mb-6 text-center font-bold">
@@ -379,10 +418,12 @@
     </div>
 
     <!-- 创建账本 -->
-    <div v-if="showLedgerModal" class="sheet-mask flex items-center justify-center p-8" @click="showLedgerModal=false"><div class="bg-white w-full max-w-[300px] rounded-[var(--radius-xl)] p-8 shadow-2xl text-center" @click.stop><h2 class="text-xl font-black mb-6">新建项目</h2><input v-model="newLedgerName" placeholder="账本名称" class="w-full bg-zinc-50 rounded-2xl p-4 mb-8 text-center font-bold"><button @click="createLedger" class="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black">确认创建</button><button @click="showLedgerModal=false" class="w-full py-2 text-zinc-400 font-bold text-[10px] mt-2">取消</button></div></div>
+    <div v-if="showLedgerModal" class="sheet-mask flex items-center justify-center p-8" @click="showLedgerModal=false"><div class="bg-white w-full max-w-[300px] rounded-[var(--radius-xl)] p-8 shadow-2xl text-center" @click.stop @touchstart.stop><h2 class="text-xl font-black mb-6">新建项目</h2><input v-model="newLedgerName" placeholder="账本名称" class="w-full bg-zinc-50 rounded-2xl p-4 mb-8 text-center font-bold"><button @click="createLedger" class="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black">确认创建</button><button @click="showLedgerModal=false" class="w-full py-2 text-zinc-400 font-bold text-[10px] mt-2">取消</button></div></div>
 
     <!-- 拖拽幽灵 -->
-    <div v-if="isMainDragging" class="fixed z-[9999] pointer-events-none w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-3xl shadow-2xl" :style="{left:dragPos.x+'px',top:dragPos.y+'px',transform:'translate(-50%,-50%) rotate(5deg)'}"><i class="ri-add-line"></i></div>
+    <transition name="drag-pop">
+    <div v-if="isMainDragging" class="fixed z-[9999] pointer-events-none w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-3xl font-black" :class="hoveredLedgerId?'scale-110':''" :style="{left:dragPos.x+'px',top:dragPos.y+'px',transform:'translate(-50%,-50%) rotate('+(hoveredLedgerId?-8:5)+'deg)',boxShadow:'0 20px 40px -8px rgba(0,0,0,0.4)'}">¥</div>
+    </transition>
   </div>
 
   <script>
@@ -391,7 +432,7 @@
     const { createApp, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } = Vue;
 
     // ===== 工具函数 =====
-    let _idCounter = 0;
+    let _idCounter = 0; let _lpTimer = null;
     function generateId(prefix) { return `${prefix}-${Date.now()}-${(++_idCounter).toString(36)}`; }
     function toLocalISODate(date) { date = date || new Date(); return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
     function csvEscape(field) { const str = String(field ?? ''); return (str.includes(',') || str.includes('"') || str.includes('\n')) ? '"' + str.replace(/"/g, '""') + '"' : str; }
@@ -461,7 +502,6 @@
       const enterLedger = (id) => { currentLedgerId.value = id; };
       const createLedger = () => { if (!newLedgerName.value.trim()) return; storage.ledgers.value.push({ id: generateId('L'), name: newLedgerName.value.trim() }); storage.saveData(); showLedgerModal.value = false; newLedgerName.value = ''; toast.showToast('项目已创建'); };
       const deleteLedger = async () => { const ok = await dialog.showConfirm('删除账本', '删除账本将同时删除该账本下的所有订单记录和分区，不可恢复。'); if (!ok) return; const targetId = currentLedgerId.value; storage.ledgers.value = storage.ledgers.value.filter(l => l.id !== targetId); storage.partitions.value = storage.partitions.value.filter(p => p.ledgerId !== targetId); storage.records.value = storage.records.value.filter(r => r.ledgerId !== targetId); storage.saveData(); currentLedgerId.value = null; toast.showToast('账本已删除'); };
-      watch(showLedgerModal, (val) => { if (val) nextTick(() => { const el = document.querySelector('.sheet-mask input'); setTimeout(() => el?.focus(), 300); }); });
       return { currentLedgerId, currentLedger, showLedgerModal, newLedgerName, ledgerStatsMap, getLedgerStats, getLedgerName, totalPaid, totalReceivable, paidRatio, enterLedger, createLedger, deleteLedger };
     }
 
@@ -541,8 +581,6 @@
       const deleteRecord = async (id) => { const ok = await dialog.showConfirm('删除记录', '确定删除此记录？'); if (ok) { storage.records.value = storage.records.value.filter(r => r.id !== id); storage.saveData(); } };
       const createPartition = async () => { const n = await dialog.showPrompt('新增分区', '分区名称'); if (n) { storage.partitions.value.push({ id: generateId('P'), ledgerId: ledger.currentLedgerId.value, name: n.trim() }); storage.saveData(); } };
 
-      watch(showQuickSheet, (val) => { if (val) nextTick(() => { const el = document.querySelector('.sheet-float input[type="text"], .sheet-float input:not([type])'); el?.focus(); }); });
-
       return { quickForm, selectedLedgerForQuick, showQuickSheet, showDatePicker, pickerMonthDate, pickerMonthDisplay, pickerCalendarDays, isEditing, searchQuery, statusFilter, statusFilters, hasActiveFilter, currentStats, pendingOrders, groupedRecords, filteredGroupedRecords, currentPartitions, toggleDatePicker, changePickerMonth, selectPickerDate, prepareQuickEntry, startEdit, submitQuickEntry, toggleRecordStatus, markAsProduced, deleteRecord, createPartition };
     }
 
@@ -585,14 +623,16 @@
     }
 
     // ===== Composable: useDrag =====
-    function useDrag(storage, ledger, prepareQuickEntry) {
+    function useDrag(storage, ledger, prepareQuickEntry, toast) {
       const isMainDragging = ref(false); const dragPos = ref({ x: 0, y: 0 }); const hoveredLedgerId = ref(null);
       let currentOnMove = null; let currentOnEnd = null;
+      let startPos = { x: 0, y: 0 }; let didDrag = false;
       const updateDragPos = (e) => { const c = e.touches ? e.touches[0] : e; dragPos.value = { x: c.clientX, y: c.clientY }; };
       const startMainDrag = (e) => {
+        const c = e.touches ? e.touches[0] : e; startPos = { x: c.clientX, y: c.clientY }; didDrag = false;
         isMainDragging.value = true; updateDragPos(e);
-        currentOnMove = (ev) => { ev.preventDefault(); updateDragPos(ev); const el = document.elementFromPoint(dragPos.value.x, dragPos.value.y); hoveredLedgerId.value = el?.closest?.('.ledger-card')?.getAttribute('data-id') || null; };
-        currentOnEnd = () => { try { if (isMainDragging.value) { if (hoveredLedgerId.value) prepareQuickEntry(hoveredLedgerId.value, CONFIG.DEFAULT_AMOUNT); else { ledger.showLedgerModal.value = true; ledger.newLedgerName.value = ''; } } } finally { isMainDragging.value = false; hoveredLedgerId.value = null; document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); currentOnMove = null; currentOnEnd = null; } };
+        currentOnMove = (ev) => { ev.preventDefault(); updateDragPos(ev); const dx = dragPos.value.x - startPos.x, dy = dragPos.value.y - startPos.y; if (Math.abs(dx) > 8 || Math.abs(dy) > 8) didDrag = true; const el = document.elementFromPoint(dragPos.value.x, dragPos.value.y); hoveredLedgerId.value = el?.closest?.('.ledger-card')?.getAttribute('data-id') || null; };
+        currentOnEnd = () => { try { if (isMainDragging.value) { if (didDrag) { if (hoveredLedgerId.value) prepareQuickEntry(hoveredLedgerId.value, CONFIG.DEFAULT_AMOUNT); else if (storage.ledgers.value.length === 0) toast.showToast('请先创建账本'); } else { ledger.showLedgerModal.value = true; ledger.newLedgerName.value = ''; } } } finally { isMainDragging.value = false; hoveredLedgerId.value = null; didDrag = false; document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); currentOnMove = null; currentOnEnd = null; } };
         document.addEventListener('touchmove', currentOnMove, { passive: false }); document.addEventListener('mousemove', currentOnMove); document.addEventListener('touchend', currentOnEnd); document.addEventListener('mouseup', currentOnEnd);
       };
       onBeforeUnmount(() => { if (currentOnMove) { document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); } if (currentOnEnd) { document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); } });
@@ -632,8 +672,10 @@
     // ===== 应用入口 =====
     const App = {
       setup() {
-        const viewMode = ref('tabs'); const activeTab = ref('ledgers');
+        const viewMode = ref('tabs'); const activeTab = ref('ledgers'); const tabDirection = ref('right');
         const tabs = [{ id: 'ledgers', icon: 'ri-folder-line', n: '项目' }, { id: 'todo', icon: 'ri-task-line', n: '待制作' }, { id: 'stats', icon: 'ri-bar-chart-line', n: '看板' }, { id: 'calendar', icon: 'ri-calendar-line', n: '日历' }];
+        const tabIndex = () => Object.fromEntries(tabs.map((t, i) => [t.id, i]));
+        watch(activeTab, (newTab, oldTab) => { const idx = tabIndex(); tabDirection.value = (idx[newTab] || 0) > (idx[oldTab] || 0) ? 'right' : 'left'; });
         const stickerLibrary = CONFIG.STICKER_LIBRARY;
 
         const toast = useToast(); const dialog = useDialog(); const storage = useStorage();
@@ -641,7 +683,7 @@
         const records = useRecords(storage, ledger, toast, dialog);
         const calendar = useCalendar(storage, toast);
         const charts = useCharts(storage.records, storage.ledgers);
-        const drag = useDrag(storage, ledger, records.prepareQuickEntry);
+        const drag = useDrag(storage, ledger, records.prepareQuickEntry, toast);
         const csvExport = useExport(storage.records, storage.ledgers);
 
         watch(() => storage.records.value.length, () => { if (activeTab.value === 'stats') charts.renderCharts(); });
@@ -652,7 +694,7 @@
         const doExport = () => csvExport.doExport(toast);
 
         return {
-          viewMode, activeTab, tabs, stickerLibrary,
+          viewMode, activeTab, tabDirection, tabs, stickerLibrary,
           toastMsg: toast.toastMsg,
           dialog: dialog.dialog, confirmDialog: dialog.confirmDialog, cancelDialog: dialog.cancelDialog,
           ledgers: storage.ledgers, records: storage.records, partitions: storage.partitions, stickers: storage.stickers,
