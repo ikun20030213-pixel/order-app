@@ -112,7 +112,7 @@
     </transition>
 
     <!-- ========== 主视图 ========== -->
-    <div v-if="viewMode === 'tabs'" class="max-w-md mx-auto bg-white min-h-screen relative shadow-2xl flex flex-col h-full sm:border-x border-zinc-200">
+    <div v-if="viewMode === 'tabs'" class="max-w-md mx-auto bg-white h-screen relative shadow-2xl flex flex-col sm:border-x border-zinc-200">
       <header class="px-6 pt-12 pb-4 bg-white sticky top-0 z-20 flex justify-between items-center">
         <h1 class="text-3xl font-black tracking-tighter">
           {{ activeTab === 'ledgers' ? '项目' : activeTab === 'todo' ? '待制作' : activeTab === 'stats' ? '看板' : currentMonthDisplay }}
@@ -129,7 +129,7 @@
         </div>
       </header>
 
-      <main class="flex-1 overflow-y-auto px-5" style="padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px))">
+      <main class="flex-1 overflow-y-auto px-5" style="padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px)); overscroll-behavior-y: contain;">
         <!-- 账本列表 -->
         <div v-if="activeTab === 'ledgers'" class="space-y-4 pt-2">
           <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">拖拽底部"+"号创建账本</p></div>
