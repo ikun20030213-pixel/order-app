@@ -164,6 +164,7 @@
           <template v-if="activeTab === 'stats'">
             <button @click="showExportPanel = true" class="bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1"><i class="ri-download-line"></i> 导出</button>
           </template>
+          <button @click="showSyncPanel = true" :class="synced?'text-emerald-500':'text-zinc-300'" class="text-xl"><i :class="syncing?'ri-loader-4-line animate-spin':'ri-cloud-line'"></i></button>
           <template v-if="activeTab === 'calendar'">
             <button @click="changeMonth(-1)" aria-label="上个月" class="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-left-s-line"></i></button>
             <button @click="changeMonth(1)" aria-label="下个月" class="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-right-s-line"></i></button>
@@ -174,7 +175,7 @@
       <main class="flex-1 overflow-y-auto px-5" style="padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px)); overscroll-behavior-y: contain;">
         <!-- 账本列表 -->
         <div v-if="activeTab === 'ledgers'" class="space-y-4 pt-2">
-          <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">拖拽底部"¥"号创建账本</p></div>
+          <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">点击底部"+"号创建账本</p></div>
           <transition-group name="list-item">
           <div v-for="ledger in ledgers" :key="ledger.id" @click="enterLedger(ledger.id)" :data-id="ledger.id" :class="['ledger-card p-6 rounded-[var(--radius-lg)] border bg-zinc-50 border-zinc-100 flex justify-between transition-all', hoveredLedgerId===ledger.id?'drop-highlight':'shadow-sm']">
             <div class="flex-1 min-w-0"><p class="text-[10px] font-bold text-emerald-500 uppercase mb-1">实收项目金</p><div class="flex items-baseline gap-1"><span class="text-xs font-black">¥</span><span class="text-3xl font-black truncate text-zinc-900">{{ getLedgerStats(ledger.id).paid }}</span></div><h3 class="mt-2 text-sm font-bold text-zinc-400 truncate"># {{ ledger.name }}</h3></div>
@@ -240,16 +241,16 @@
           </div>
 
           <!-- 账本占比 + 趋势 -->
-          <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-3">
             <div class="bg-white p-4 rounded-[var(--radius-lg)] border border-zinc-100">
               <h3 class="text-[10px] font-black text-zinc-500 uppercase mb-2">账本占比</h3>
-              <div v-if="totalPaid > 0" class="w-full h-36"><canvas id="pieChart"></canvas></div>
-              <div v-else class="h-36 flex flex-col items-center justify-center text-zinc-200"><i class="ri-pie-chart-line text-3xl mb-1"></i><p class="text-[10px]">暂无</p></div>
+              <div v-if="totalPaid > 0" class="w-full h-44"><canvas id="pieChart"></canvas></div>
+              <div v-else class="h-44 flex flex-col items-center justify-center text-zinc-200"><i class="ri-pie-chart-line text-3xl mb-1"></i><p class="text-[10px]">暂无</p></div>
             </div>
             <div class="bg-white p-4 rounded-[var(--radius-lg)] border border-zinc-100">
               <h3 class="text-[10px] font-black text-zinc-500 uppercase mb-2">近7天</h3>
-              <div v-if="totalPaid > 0" class="w-full h-36"><canvas id="lineChart"></canvas></div>
-              <div v-else class="h-36 flex flex-col items-center justify-center text-zinc-200"><i class="ri-line-chart-line text-3xl mb-1"></i><p class="text-[10px]">暂无</p></div>
+              <div v-if="totalPaid > 0" class="w-full h-44"><canvas id="lineChart"></canvas></div>
+              <div v-else class="h-44 flex flex-col items-center justify-center text-zinc-200"><i class="ri-line-chart-line text-3xl mb-1"></i><p class="text-[10px]">暂无</p></div>
             </div>
           </div>
 
@@ -326,7 +327,7 @@
         </button>
       </nav>
       <div v-if="activeTab==='ledgers'" class="fixed left-1/2 -translate-x-1/2 z-[200]" style="bottom: calc(7rem + env(safe-area-inset-bottom, 0px))">
-        <div @touchstart.prevent="startMainDrag" @mousedown.prevent="startMainDrag" aria-label="点击新建项目，拖拽到项目入账" class="w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-4xl shadow-2xl active:scale-90 transition-transform cursor-grab select-none"><i class="ri-add-line"></i></div>
+        <div @pointerdown.prevent="startMainDrag" aria-label="点击新建项目，拖拽到项目入账" class="w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-4xl shadow-2xl cursor-grab select-none" style="touch-action: none"><i class="ri-add-line"></i></div>
       </div>
     </div>
 
@@ -473,6 +474,38 @@
       </div>
     </transition>
 
+    <!-- 云端同步面板 -->
+    <div v-if="showSyncPanel" class="sheet-mask" @click="showSyncPanel=false"></div>
+    <transition name="sheet-up">
+      <div v-if="showSyncPanel" class="sheet-float">
+        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"></div>
+        <h2 class="text-xl font-black mb-4">云端同步</h2>
+        <div class="space-y-3">
+          <div class="bg-zinc-50 p-4 rounded-2xl">
+            <label class="text-[9px] font-bold block mb-2">GitHub Token</label>
+            <div class="flex gap-2">
+              <input v-model="syncToken" type="password" placeholder="ghp_xxxx" class="flex-1 bg-white rounded-xl p-3 text-xs font-bold">
+              <button @click="saveToken" class="bg-zinc-900 text-white px-4 rounded-xl text-xs font-bold">保存</button>
+            </div>
+            <p class="text-[9px] text-zinc-400 mt-2">在 GitHub Settings → Developer settings → Personal access tokens 生成，勾选 gist 权限</p>
+          </div>
+          <div class="bg-zinc-50 p-4 rounded-2xl">
+            <label class="text-[9px] font-bold block mb-2">加密密码（可选）</label>
+            <input v-model="syncPassword" type="password" placeholder="不填则不加密" class="w-full bg-white rounded-xl p-3 text-xs font-bold">
+            <p class="text-[9px] text-zinc-400 mt-1">设置后数据加密存储，忘记密码无法恢复</p>
+          </div>
+          <div v-if="lastSync" class="text-[9px] text-zinc-400 text-center">上次同步: {{ lastSync }}</div>
+        </div>
+        <div class="flex gap-2 mt-6">
+          <button v-if="synced" @click="pushToGist" :disabled="syncing" class="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-black text-sm">{{ syncing ? '同步中...' : '推送' }}</button>
+          <button v-if="synced" @click="pullFromGist" :disabled="syncing" class="flex-1 bg-zinc-100 text-zinc-700 py-4 rounded-2xl font-black text-sm">{{ syncing ? '同步中...' : '拉取' }}</button>
+          <button v-if="!synced && syncToken.trim()" @click="saveToken(); pushToGist()" :disabled="syncing" class="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-black text-sm">{{ syncing ? '连接中...' : '连接并同步' }}</button>
+          <button v-if="synced" @click="disconnect" class="px-4 text-red-400 font-bold text-sm">断开</button>
+        </div>
+        <p v-if="syncMsg" class="text-center text-xs font-bold mt-3" :class="syncMsg.includes('成功')?'text-emerald-500':'text-red-400'">{{ syncMsg }}</p>
+      </div>
+    </transition>
+
     <!-- 贴纸选择器 -->
     <div v-if="showStickerPicker" class="sheet-mask" @click="showStickerPicker=false"></div>
     <transition name="sheet-up"><div v-if="showStickerPicker" class="sheet-float text-center"><p class="text-sm font-black mb-3">选择贴纸 · {{ selectedDayForSticker?.dateNum }}日</p><div class="flex flex-wrap justify-center gap-2 mb-4"><button v-for="e in stickerLibrary" @click="addStickerToDay(e); showStickerPicker=false" class="text-2xl p-2 bg-zinc-50 rounded-xl">{{e}}</button></div><button @click="removeLastSticker(); showStickerPicker=false" class="text-xs text-red-400 font-bold">移除最后一个</button></div></transition>
@@ -493,7 +526,7 @@
 
     <!-- 拖拽幽灵 -->
     <transition name="drag-pop">
-    <div v-if="isMainDragging" class="fixed z-[9999] pointer-events-none w-16 h-16 bg-zinc-900 text-white flex items-center justify-center text-3xl font-black transition-all duration-150" :class="hoveredLedgerId?'scale-110':''" :style="{left:dragPos.x+'px',top:dragPos.y+'px',transform:'translate(-50%,-50%) rotate('+(hoveredLedgerId?-8:5)+'deg) scale('+Math.min(1+dragDistance/300,1.2)+')',borderRadius:dragDistance>60?'50%':'var(--radius-lg)',boxShadow:'0 '+Math.min(dragDistance/5,30)+'px '+Math.min(dragDistance/3,50)+'px -8px rgba(0,0,0,0.4)'}">{{ dragDistance > 80 ? '💰' : '+' }}</div>
+    <div v-if="isMainDragging" class="fixed z-[9999] pointer-events-none w-16 h-16 bg-zinc-900 text-white flex items-center justify-center text-3xl font-black" :class="hoveredLedgerId?'scale-110':''" :style="{left:dragPos.x+'px',top:dragPos.y+'px',transform:'translate(-50%,-50%) rotate('+(hoveredLedgerId?-8:5)+'deg) scale('+Math.min(1+dragDistance/300,1.2)+')',borderRadius:dragDistance>60?'50%':'var(--radius-lg)',boxShadow:'0 '+Math.min(dragDistance/5,30)+'px '+Math.min(dragDistance/3,50)+'px -8px rgba(0,0,0,0.4)'}">{{ dragDistance > 80 ? '💰' : '+' }}</div>
     </transition>
   </div>
 
@@ -662,7 +695,7 @@
       const toggleRecordStatus = (r) => { if (r.status === 'pending') r.status = 'produced'; else if (r.status === 'produced') r.status = 'paid'; else r.status = 'produced'; storage.saveData(); };
       const markAsProduced = (id) => { const r = storage.records.value.find(x => x.id === id); if (r) { r.status = 'produced'; storage.saveData(); toast.showToast('完工'); } };
       const deleteRecord = async (id) => { const ok = await dialog.showConfirm('删除记录', '确定删除此记录？'); if (ok) { storage.records.value = storage.records.value.filter(r => r.id !== id); storage.saveData(); } };
-      const createPartition = async () => { const n = await dialog.showPrompt('新增分区', '分区名称'); if (n) { storage.partitions.value.push({ id: generateId('P'), ledgerId: ledger.currentLedgerId.value, name: n.trim() }); storage.saveData(); } };
+      const createPartition = async () => { const n = await dialog.showPrompt('新增分区', '分区名称'); if (n) { storage.partitions.value.push({ id: generateId('P'), ledgerId: ledger.currentLedgerId.value, name: n.trim() }); storage.saveData(); toast.showToast('分区已创建，添加账单时可选择'); } };
 
       return { quickForm, selectedLedgerForQuick, showQuickSheet, showDatePicker, pickerMonthDate, pickerMonthDisplay, pickerCalendarDays, isEditing, searchQuery, statusFilter, statusFilters, hasActiveFilter, currentStats, pendingOrders, groupedRecords, filteredGroupedRecords, recentRecords, currentPartitions, toggleDatePicker, changePickerMonth, selectPickerDate, prepareQuickEntry, startEdit, submitQuickEntry, toggleRecordStatus, markAsProduced, deleteRecord, createPartition };
     }
@@ -708,17 +741,46 @@
     // ===== Composable: useDrag =====
     function useDrag(storage, ledger, prepareQuickEntry, toast) {
       const isMainDragging = ref(false); const dragPos = ref({ x: 0, y: 0 }); const hoveredLedgerId = ref(null); const dragDistance = ref(0);
-      let currentOnMove = null; let currentOnEnd = null;
-      let startPos = { x: 0, y: 0 }; let didDrag = false;
-      const updateDragPos = (e) => { const c = e.touches ? e.touches[0] : e; dragPos.value = { x: c.clientX, y: c.clientY }; };
-      const startMainDrag = (e) => {
-        const c = e.touches ? e.touches[0] : e; startPos = { x: c.clientX, y: c.clientY }; didDrag = false; dragDistance.value = 0;
-        isMainDragging.value = true; updateDragPos(e);
-        currentOnMove = (ev) => { ev.preventDefault(); updateDragPos(ev); const dx = dragPos.value.x - startPos.x, dy = dragPos.value.y - startPos.y; dragDistance.value = Math.sqrt(dx*dx + dy*dy); if (dragDistance.value > 8) didDrag = true; const el = document.elementFromPoint(dragPos.value.x, dragPos.value.y); hoveredLedgerId.value = el?.closest?.('.ledger-card')?.getAttribute('data-id') || null; };
-        currentOnEnd = () => { try { if (isMainDragging.value) { if (didDrag) { if (hoveredLedgerId.value) prepareQuickEntry(hoveredLedgerId.value, CONFIG.DEFAULT_AMOUNT); else if (storage.ledgers.value.length === 0) toast.showToast('请先创建账本'); } else { ledger.showLedgerModal.value = true; ledger.newLedgerName.value = ''; } } } finally { isMainDragging.value = false; hoveredLedgerId.value = null; dragDistance.value = 0; didDrag = false; document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); currentOnMove = null; currentOnEnd = null; } };
-        document.addEventListener('touchmove', currentOnMove, { passive: false }); document.addEventListener('mousemove', currentOnMove); document.addEventListener('touchend', currentOnEnd); document.addEventListener('mouseup', currentOnEnd);
+      let didDrag = false; let startPos = { x: 0, y: 0 }; let rafId = 0;
+      const onMove = (ev) => {
+        const cx = ev.clientX ?? ev.touches?.[0]?.clientX ?? 0;
+        const cy = ev.clientY ?? ev.touches?.[0]?.clientY ?? 0;
+        const dx = cx - startPos.x, dy = cy - startPos.y;
+        dragDistance.value = Math.sqrt(dx * dx + dy * dy);
+        if (dragDistance.value > 8) didDrag = true;
+        dragPos.value = { x: cx, y: cy };
+        if (!rafId) { rafId = requestAnimationFrame(() => { rafId = 0; const el = document.elementFromPoint(dragPos.value.x, dragPos.value.y); hoveredLedgerId.value = el?.closest?.('.ledger-card')?.getAttribute('data-id') || null; }); }
       };
-      onBeforeUnmount(() => { if (currentOnMove) { document.removeEventListener('touchmove', currentOnMove); document.removeEventListener('mousemove', currentOnMove); } if (currentOnEnd) { document.removeEventListener('touchend', currentOnEnd); document.removeEventListener('mouseup', currentOnEnd); } });
+      const onEnd = () => {
+        try {
+          if (isMainDragging.value) {
+            if (didDrag) {
+              if (hoveredLedgerId.value) prepareQuickEntry(hoveredLedgerId.value, CONFIG.DEFAULT_AMOUNT);
+              else if (storage.ledgers.value.length === 0) toast.showToast('请先创建账本');
+            } else { ledger.showLedgerModal.value = true; ledger.newLedgerName.value = ''; }
+          }
+        } finally {
+          cancelAnimationFrame(rafId); rafId = 0;
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onEnd);
+          document.removeEventListener('pointercancel', onEnd);
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onEnd);
+          isMainDragging.value = false; hoveredLedgerId.value = null; dragDistance.value = 0; didDrag = false;
+        }
+      };
+      const startMainDrag = (e) => {
+        if (e.button && e.button !== 0) return;
+        const cx = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+        const cy = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+        startPos = { x: cx, y: cy }; didDrag = false; dragDistance.value = 0;
+        isMainDragging.value = true; dragPos.value = { x: cx, y: cy };
+        document.addEventListener('pointermove', onMove, { passive: false });
+        document.addEventListener('pointerup', onEnd);
+        document.addEventListener('pointercancel', onEnd);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+      };
       return { isMainDragging, dragPos, hoveredLedgerId, dragDistance, startMainDrag };
     }
 
@@ -752,6 +814,99 @@
       return { showExportPanel, exportScope, exportLedgerId, exportStartDate, exportEndDate, doExport };
     }
 
+    // ===== Composable: useCloudSync =====
+    function useCloudSync(storage, toast) {
+      const GIST_DESC = '接单助手数据同步 - 请勿删除此Gist';
+      const showSyncPanel = ref(false);
+      const token = ref(localStorage.getItem('orderAppGithubToken') || '');
+      const gistId = ref(localStorage.getItem('orderAppGistId') || '');
+      const syncPassword = ref('');
+      const syncing = ref(false);
+      const syncMsg = ref('');
+      const lastSync = ref(localStorage.getItem('orderAppLastSync') || '');
+      const synced = ref(!!(localStorage.getItem('orderAppGithubToken') && localStorage.getItem('orderAppGistId')));
+
+      function getKey(password, salt) {
+        const enc = new TextEncoder();
+        return crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey'])
+          .then(k => crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, k, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']));
+      }
+      async function encrypt(data, password) {
+        const enc = new TextEncoder(); const salt = crypto.getRandomValues(new Uint8Array(16)); const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await getKey(password, salt);
+        const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(data));
+        const buf = new Uint8Array(salt.length + iv.length + ct.byteLength); buf.set(salt); buf.set(iv, 16); buf.set(new Uint8Array(ct), 28);
+        return btoa(String.fromCharCode(...buf));
+      }
+      async function decrypt(b64, password) {
+        const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        const salt = buf.slice(0, 16), iv = buf.slice(16, 28), ct = buf.slice(28);
+        const key = await getKey(password, salt);
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+        return new TextDecoder().decode(pt);
+      }
+
+      async function pushToGist() {
+        if (!token.value || syncing.value) return;
+        syncing.value = true; syncMsg.value = '';
+        try {
+          const data = JSON.stringify({ records: storage.records.value, ledgers: storage.ledgers.value, partitions: storage.partitions.value, stickers: storage.stickers.value, _ts: Date.now() });
+          const content = syncPassword.value ? await encrypt(data, syncPassword.value) : btoa(unescape(encodeURIComponent(data)));
+          const body = { description: GIST_DESC, files: { 'order-app-data.json': { content } } };
+          const url = gistId.value ? `https://api.github.com/gists/${gistId.value}` : 'https://api.github.com/gists';
+          const res = await fetch(url, { method: gistId.value ? 'PATCH' : 'POST', headers: { 'Authorization': `token ${token.value}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          if (!gistId.value) { gistId.value = json.id; localStorage.setItem('orderAppGistId', json.id); }
+          const now = new Date().toLocaleString(); lastSync.value = now; localStorage.setItem('orderAppLastSync', now); synced.value = true;
+          syncMsg.value = '同步成功';
+        } catch (e) { syncMsg.value = '同步失败: ' + e.message; }
+        finally { syncing.value = false; setTimeout(() => syncMsg.value = '', 3000); }
+      }
+
+      async function pullFromGist() {
+        if (!token.value || !gistId.value || syncing.value) return;
+        syncing.value = true; syncMsg.value = '';
+        try {
+          const res = await fetch(`https://api.github.com/gists/${gistId.value}`, { headers: { 'Authorization': `token ${token.value}` } });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json(); const raw = json.files?.['order-app-data.json']?.content; if (!raw) throw new Error('Gist中无数据');
+          const jsonStr = syncPassword.value ? await decrypt(raw, syncPassword.value) : decodeURIComponent(escape(atob(raw)));
+          const cloud = JSON.parse(jsonStr);
+          if (cloud.records) storage.records.value = cloud.records;
+          if (cloud.ledgers) storage.ledgers.value = cloud.ledgers;
+          if (cloud.partitions) storage.partitions.value = cloud.partitions;
+          if (cloud.stickers) storage.stickers.value = cloud.stickers;
+          storage.saveData();
+          const now = new Date().toLocaleString(); lastSync.value = now; localStorage.setItem('orderAppLastSync', now); synced.value = true;
+          syncMsg.value = '拉取成功';
+        } catch (e) { syncMsg.value = '拉取失败: ' + e.message; }
+        finally { syncing.value = false; setTimeout(() => syncMsg.value = '', 3000); }
+      }
+
+      async function initSync() {
+        if (!token.value || !gistId.value) return;
+        await pullFromGist();
+      }
+
+      let pushTimer = null;
+      const debouncedPush = () => { clearTimeout(pushTimer); pushTimer = setTimeout(() => pushToGist(), 5000); };
+
+      function saveToken() {
+        const t = token.value.trim(); if (!t) return;
+        localStorage.setItem('orderAppGithubToken', t); token.value = t;
+        syncMsg.value = 'Token已保存'; setTimeout(() => syncMsg.value = '', 2000);
+      }
+
+      function disconnect() {
+        localStorage.removeItem('orderAppGithubToken'); localStorage.removeItem('orderAppGistId'); localStorage.removeItem('orderAppLastSync');
+        token.value = ''; gistId.value = ''; lastSync.value = ''; synced.value = false; syncPassword.value = '';
+        syncMsg.value = '已断开'; setTimeout(() => syncMsg.value = '', 2000);
+      }
+
+      return { showSyncPanel, token, gistId, syncPassword, syncing, syncMsg, lastSync, synced, pushToGist, pullFromGist, initSync, debouncedPush, saveToken, disconnect };
+    }
+
     // ===== 应用入口 =====
     const App = {
       setup() {
@@ -768,9 +923,14 @@
         const charts = useCharts(storage.records, storage.ledgers);
         const drag = useDrag(storage, ledger, records.prepareQuickEntry, toast);
         const csvExport = useExport(storage.records, storage.ledgers);
+        const cloudSync = useCloudSync(storage, toast);
 
         watch(() => storage.records.value.length, () => { if (activeTab.value === 'stats') charts.renderCharts(); });
         watch(activeTab, (newTab) => { if (newTab === 'stats') nextTick(charts.renderCharts); });
+
+        onMounted(() => { cloudSync.initSync(); });
+        watch(storage.records, () => { if (cloudSync.synced.value) cloudSync.debouncedPush(); }, { deep: true });
+        watch(storage.ledgers, () => { if (cloudSync.synced.value) cloudSync.debouncedPush(); }, { deep: true });
 
         const enterLedger = (id) => { ledger.enterLedger(id); viewMode.value = 'detail'; records.searchQuery.value = ''; records.statusFilter.value = 'all'; };
         const formatDate = (t) => new Date(t).toLocaleDateString();
@@ -811,6 +971,11 @@
           showExportPanel: csvExport.showExportPanel, exportScope: csvExport.exportScope,
           exportLedgerId: csvExport.exportLedgerId, exportStartDate: csvExport.exportStartDate,
           exportEndDate: csvExport.exportEndDate, doExport,
+          showSyncPanel: cloudSync.showSyncPanel, syncToken: cloudSync.token, syncGistId: cloudSync.gistId,
+          syncPassword: cloudSync.syncPassword, syncing: cloudSync.syncing, syncMsg: cloudSync.syncMsg,
+          lastSync: cloudSync.lastSync, synced: cloudSync.synced,
+          pushToGist: cloudSync.pushToGist, pullFromGist: cloudSync.pullFromGist,
+          saveToken: cloudSync.saveToken, disconnect: cloudSync.disconnect,
           enterLedger, formatDate
         };
       }
