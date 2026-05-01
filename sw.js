@@ -1,12 +1,23 @@
-const CACHE_NAME = 'order-app-v1';
+const CACHE_NAME = 'order-app-v2';
 const ASSETS = [
   'index.html',
   'manifest.json'
 ];
+const CDN_ASSETS = [
+  'https://cdn.bootcdn.net/ajax/libs/remixicon/3.5.0/remixicon.min.css',
+  'https://cdn.tailwindcss.com',
+  'https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
+  'https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/vue/3.2.31/vue.global.prod.min.js'
+];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.all([
+        cache.addAll(ASSETS),
+        ...CDN_ASSETS.map(url => cache.add(url).catch(() => {}))
+      ])
+    ).then(() => self.skipWaiting())
   );
 });
 

@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="接单助手">
   <link rel="manifest" href="manifest.json">
-  <link href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/remixicon/3.5.0/remixicon.css" rel="stylesheet"
+  <link href="https://cdn.bootcdn.net/ajax/libs/remixicon/3.5.0/remixicon.min.css" rel="stylesheet"
         onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css';">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/vue/3.2.31/vue.global.prod.min.js"></script>
   <script>
     if (typeof Vue === 'undefined') {
@@ -129,7 +129,7 @@
         </div>
       </header>
 
-      <main class="flex-1 overflow-y-auto px-5 pb-40">
+      <main class="flex-1 overflow-y-auto px-5" style="padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px))">
         <!-- 账本列表 -->
         <div v-if="activeTab === 'ledgers'" class="space-y-4 pt-2">
           <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">拖拽底部"+"号创建账本</p></div>
@@ -200,12 +200,12 @@
       </main>
 
       <!-- 底部导航 -->
-      <nav class="absolute bottom-0 w-full bg-white/90 backdrop-blur-xl border-t border-zinc-100 flex justify-around py-6 px-4 z-[100]">
+      <nav class="absolute bottom-0 w-full bg-white/90 backdrop-blur-xl border-t border-zinc-100 flex justify-around py-6 px-4 z-[100]" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px))">
         <button v-for="tab in tabs" :key="tab.id" @click="activeTab=tab.id" :aria-label="tab.n" :class="activeTab===tab.id?'tab-active scale-110':'tab-inactive'" class="flex flex-col items-center gap-1 transition-all">
           <i :class="tab.icon" class="text-2xl"></i><span class="text-[9px] uppercase font-bold">{{ tab.n }}</span>
         </button>
       </nav>
-      <div v-if="activeTab==='ledgers'" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[200]">
+      <div v-if="activeTab==='ledgers'" class="fixed left-1/2 -translate-x-1/2 z-[200]" style="bottom: calc(7rem + env(safe-area-inset-bottom, 0px))">
         <div @touchstart.prevent="startMainDrag" @mousedown.prevent="startMainDrag" aria-label="创建账本或入账" class="w-16 h-16 bg-zinc-900 text-white rounded-[var(--radius-lg)] flex items-center justify-center text-4xl shadow-2xl active:scale-90 transition-transform cursor-grab select-none"><i class="ri-add-line"></i></div>
       </div>
     </div>
