@@ -51,14 +51,15 @@
     .tab-active { color: #18181b; font-weight: 900; }
     .tab-inactive { color: #a1a1aa; }
     .calendar-day {
-      min-height: 70px;
+      min-height: 64px;
       font-size: 11px;
-      border-right: 1px solid #f1f1f1;
-      border-bottom: 1px solid #f1f1f1;
+      border-right: 1px solid #f4f4f5;
+      border-bottom: 1px solid #f4f4f5;
       position: relative;
       background: white;
-      transition: background 0.2s;
+      transition: background 0.15s;
     }
+    .calendar-day:nth-child(7n) { border-right: none; }
     .calendar-day:active { background: #f9fafb; }
     .mini-calendar-day {
       height: 44px;
@@ -193,46 +194,122 @@
 
         <!-- 看板 -->
         <div v-if="activeTab==='stats'" class="space-y-4 pt-2 pb-4">
-          <div class="bg-zinc-900 p-7 rounded-[var(--radius-xl)] text-white shadow-2xl">
-            <div class="flex justify-between items-end mb-4"><div><p class="text-[10px] text-zinc-500">实收资产</p><transition name="num-bounce" mode="out-in"><p class="text-5xl font-black" :key="totalPaid">¥{{ totalPaid }}</p></transition></div><div class="text-right"><p class="text-[10px] text-zinc-400">待收欠款</p><transition name="num-bounce" mode="out-in"><p class="text-xl font-bold text-zinc-200" :key="totalReceivable">¥{{ totalReceivable }}</p></transition></div></div>
-            <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden"><div class="h-full bg-emerald-400 transition-all duration-700" :style="{width:paidRatio+'%'}"></div></div>
-            <p class="text-[9px] text-zinc-500 mt-3 font-bold text-center">回笼率 {{ paidRatio }}%</p>
-          </div>
-          <div class="bg-white p-4 rounded-[var(--radius-lg)] shadow-sm border border-zinc-100">
-            <h3 class="text-xs font-black text-zinc-500 uppercase mb-3 ml-2">本月每日收入</h3>
-            <div v-if="totalPaid > 0" class="w-full h-48"><canvas id="dailyBarChart"></canvas></div>
-            <div v-else class="h-48 flex items-center justify-center text-zinc-300 text-xs">暂无数据</div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div class="bg-white p-4 rounded-[var(--radius-lg)] shadow-sm border border-zinc-100">
-              <h3 class="text-xs font-black text-zinc-500 uppercase mb-2 ml-1">账本占比</h3>
-              <div v-if="totalPaid > 0" class="w-full h-40"><canvas id="pieChart"></canvas></div>
-              <div v-else class="h-40 flex items-center justify-center text-zinc-300 text-xs">暂无数据</div>
+          <!-- 核心数据卡 -->
+          <div class="bg-zinc-900 p-6 rounded-[var(--radius-xl)] text-white shadow-2xl">
+            <div class="flex justify-between items-start mb-5">
+              <div>
+                <p class="text-[10px] text-zinc-500 mb-1">实收资产</p>
+                <transition name="num-bounce" mode="out-in"><p class="text-4xl font-black" :key="totalPaid">¥{{ totalPaid }}</p></transition>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] text-zinc-500 mb-1">待收</p>
+                <transition name="num-bounce" mode="out-in"><p class="text-lg font-bold text-zinc-400" :key="totalReceivable">¥{{ totalReceivable }}</p></transition>
+              </div>
             </div>
-            <div class="bg-white p-4 rounded-[var(--radius-lg)] shadow-sm border border-zinc-100">
-              <h3 class="text-xs font-black text-zinc-500 uppercase mb-2 ml-1">近7天趋势</h3>
-              <div v-if="totalPaid > 0" class="w-full h-40"><canvas id="lineChart"></canvas></div>
-              <div v-else class="h-40 flex items-center justify-center text-zinc-300 text-xs">暂无数据</div>
+            <div class="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden"><div class="h-full bg-emerald-400 transition-all duration-700" :style="{width:paidRatio+'%'}"></div></div>
+            <div class="flex justify-between mt-2">
+              <p class="text-[9px] text-zinc-600">回笼率 {{ paidRatio }}%</p>
+              <p class="text-[9px] text-zinc-600">共 {{ monthOrderCount }} 单</p>
+            </div>
+          </div>
+
+          <!-- 快速统计 -->
+          <div class="grid grid-cols-3 gap-2">
+            <div class="bg-white p-3 rounded-2xl border border-zinc-100 text-center">
+              <p class="text-[9px] text-zinc-400 font-bold">本月</p>
+              <p class="text-lg font-black text-zinc-900">{{ monthOrderCount }}</p>
+              <p class="text-[9px] text-zinc-400">单</p>
+            </div>
+            <div class="bg-white p-3 rounded-2xl border border-zinc-100 text-center">
+              <p class="text-[9px] text-zinc-400 font-bold">均价</p>
+              <p class="text-lg font-black text-zinc-900">{{ monthAvgAmount }}</p>
+              <p class="text-[9px] text-zinc-400">元</p>
+            </div>
+            <div class="bg-white p-3 rounded-2xl border border-zinc-100 text-center">
+              <p class="text-[9px] text-zinc-400 font-bold">最高</p>
+              <p class="text-lg font-black text-emerald-600">{{ monthMaxAmount }}</p>
+              <p class="text-[9px] text-zinc-400">元</p>
+            </div>
+          </div>
+
+          <!-- 收入趋势 -->
+          <div class="bg-white p-4 rounded-[var(--radius-lg)] border border-zinc-100">
+            <h3 class="text-xs font-black text-zinc-500 uppercase mb-3 ml-1">本月收入</h3>
+            <div v-if="totalPaid > 0" class="w-full h-44"><canvas id="dailyBarChart"></canvas></div>
+            <div v-else class="h-44 flex flex-col items-center justify-center text-zinc-200"><i class="ri-bar-chart-2-line text-4xl mb-2"></i><p class="text-xs">暂无数据</p></div>
+          </div>
+
+          <!-- 账本占比 + 趋势 -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white p-4 rounded-[var(--radius-lg)] border border-zinc-100">
+              <h3 class="text-[10px] font-black text-zinc-500 uppercase mb-2">账本占比</h3>
+              <div v-if="totalPaid > 0" class="w-full h-36"><canvas id="pieChart"></canvas></div>
+              <div v-else class="h-36 flex flex-col items-center justify-center text-zinc-200"><i class="ri-pie-chart-line text-3xl mb-1"></i><p class="text-[10px]">暂无</p></div>
+            </div>
+            <div class="bg-white p-4 rounded-[var(--radius-lg)] border border-zinc-100">
+              <h3 class="text-[10px] font-black text-zinc-500 uppercase mb-2">近7天</h3>
+              <div v-if="totalPaid > 0" class="w-full h-36"><canvas id="lineChart"></canvas></div>
+              <div v-else class="h-36 flex flex-col items-center justify-center text-zinc-200"><i class="ri-line-chart-line text-3xl mb-1"></i><p class="text-[10px]">暂无</p></div>
+            </div>
+          </div>
+
+          <!-- 最近入账 -->
+          <div v-if="recentRecords.length > 0">
+            <h3 class="text-xs font-black text-zinc-500 uppercase mb-3 ml-1">最近入账</h3>
+            <div class="space-y-2">
+              <div v-for="r in recentRecords" :key="r.id" class="bg-white p-4 rounded-2xl border border-zinc-100 flex justify-between items-center">
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-sm text-zinc-800 truncate">{{ r.customer }}</p>
+                  <p class="text-[10px] text-zinc-400 mt-0.5">{{ getLedgerName(r.ledgerId) }} · {{ formatDate(r.date) }}</p>
+                </div>
+                <span class="font-black text-sm" :class="r.status==='paid'?'text-emerald-500':'text-zinc-400'">¥{{ r.amount }}</span>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 日历 -->
         <div v-if="activeTab==='calendar'" class="pt-2">
-          <div class="grid grid-cols-7 mb-3 text-center text-[10px] font-black text-zinc-300">
-            <div v-for="d in ['日','一','二','三','四','五','六']">{{d}}</div>
+          <!-- 星期头 -->
+          <div class="grid grid-cols-7 mb-2 text-center text-[10px] font-bold text-zinc-400">
+            <div v-for="d in ['日','一','二','三','四','五','六']" :class="d==='日'||d==='六'?'text-zinc-300':''">{{d}}</div>
           </div>
-          <div class="grid grid-cols-7 border-t border-l border-zinc-100 rounded-[var(--radius-lg)] overflow-hidden shadow-sm bg-white">
-            <div v-for="day in calendarDays" :key="day.fullDate" @click="openStickerPicker(day)" :class="['calendar-day p-1 flex flex-col items-center', day.isCurrentMonth?'bg-white':'bg-zinc-50/50 opacity-30']">
-              <span :class="day.isToday?'text-emerald-500 font-black':'text-zinc-500'" class="text-xs mt-0.5">{{ day.dateNum }}</span>
+          <!-- 日历格子 -->
+          <div class="grid grid-cols-7 rounded-[var(--radius-lg)] overflow-hidden bg-white border border-zinc-100">
+            <div v-for="day in calendarDays" :key="day.fullDate" @click="openStickerPicker(day)" :class="['calendar-day relative flex flex-col items-center justify-start pt-1.5 pb-1', day.isCurrentMonth?'bg-white':'bg-zinc-50/30']">
+              <!-- 日期数字 -->
+              <span v-if="day.isToday" class="w-7 h-7 rounded-full bg-zinc-900 text-white flex items-center justify-center text-xs font-black">{{ day.dateNum }}</span>
+              <span v-else :class="day.isCurrentMonth?'text-zinc-700 font-semibold':'text-zinc-300'" class="text-xs">{{ day.dateNum }}</span>
+              <!-- 贴纸 -->
               <div class="flex flex-wrap justify-center gap-0.5 mt-0.5 max-w-[90%]">
-                <span v-for="(sticker,idx) in getDayStickers(day.fullDate)" :key="idx" class="sticker-emoji leading-none">{{ sticker }}</span>
+                <span v-for="(sticker,idx) in getDayStickers(day.fullDate)" :key="idx" class="sticker-emoji leading-none text-sm">{{ sticker }}</span>
               </div>
-              <div v-if="hasPaidOrder(day.fullDate)" class="absolute top-1 right-1 w-2 h-2 bg-emerald-400 rounded-full"></div>
-              <div v-if="getDayOrdersCount(day.fullDate)" class="text-[8px] text-zinc-400 mt-auto pb-0.5">{{ getDayOrdersCount(day.fullDate) }}单</div>
+              <!-- 订单指示器 -->
+              <div class="flex gap-0.5 mt-auto mb-0.5">
+                <div v-if="getDayOrdersCount(day.fullDate)" class="w-1.5 h-1.5 rounded-full" :class="hasPaidOrder(day.fullDate)?'bg-emerald-400':'bg-orange-300'"></div>
+              </div>
             </div>
           </div>
-          <div class="mt-6 bg-amber-50 p-5 rounded-[var(--radius-lg)] border border-amber-200">
+          <!-- 图例 -->
+          <div class="flex justify-center gap-4 mt-3">
+            <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-emerald-400"></div><span class="text-[9px] text-zinc-400">已收款</span></div>
+            <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-orange-300"></div><span class="text-[9px] text-zinc-400">待收款</span></div>
+          </div>
+          <!-- 本月统计 -->
+          <div class="mt-4 bg-white p-4 rounded-[var(--radius-lg)] border border-zinc-100">
+            <div class="flex justify-between items-center">
+              <div>
+                <p class="text-[10px] text-zinc-400 font-bold">本月订单</p>
+                <p class="text-xl font-black text-zinc-900">{{ monthOrderCount }} <span class="text-xs text-zinc-400">单</span></p>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] text-zinc-400 font-bold">已收款</p>
+                <p class="text-xl font-black text-emerald-500">¥{{ totalPaid }}</p>
+              </div>
+            </div>
+          </div>
+          <!-- 贴纸面板 -->
+          <div class="mt-4 bg-amber-50 p-4 rounded-[var(--radius-lg)] border border-amber-200">
             <p class="text-xs font-black text-amber-700 mb-3 flex items-center gap-2"><i class="ri-sticker-line"></i> 常用贴纸</p>
             <div class="flex flex-wrap gap-2">
               <button v-for="emoji in stickerLibrary" :key="emoji" @click="addStickerToSelectedDay(emoji)" class="text-xl p-2 bg-white rounded-xl shadow-sm active:scale-90 transition-transform">{{ emoji }}</button>
@@ -500,6 +577,10 @@
       const totalPaid = computed(() => sumAmount(storage.records.value.filter(r => r.status === 'paid')));
       const totalReceivable = computed(() => sumAmount(storage.records.value.filter(r => r.status === 'produced')));
       const paidRatio = computed(() => { const p = Number(totalPaid.value), r = Number(totalReceivable.value); return (p + r) === 0 ? 0 : Math.round((p / (p + r)) * 100); });
+      const monthRecords = computed(() => { const now = new Date(); return storage.records.value.filter(r => { const d = new Date(r.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }); });
+      const monthOrderCount = computed(() => monthRecords.value.length);
+      const monthAvgAmount = computed(() => { const paid = monthRecords.value.filter(r => r.status === 'paid'); return paid.length ? Math.round(paid.reduce((s, r) => s + Number(r.amount), 0) / paid.length) : 0; });
+      const monthMaxAmount = computed(() => { const paid = monthRecords.value.filter(r => r.status === 'paid'); return paid.length ? Math.max(...paid.map(r => Number(r.amount))) : 0; });
       const enterLedger = (id) => { currentLedgerId.value = id; };
       const createLedger = () => { if (!newLedgerName.value.trim()) return; storage.ledgers.value.push({ id: generateId('L'), name: newLedgerName.value.trim() }); storage.saveData(); showLedgerModal.value = false; newLedgerName.value = ''; toast.showToast('项目已创建'); };
       const deleteLedger = async () => { const ok = await dialog.showConfirm('删除账本', '删除账本将同时删除该账本下的所有订单记录和分区，不可恢复。'); if (!ok) return; const targetId = currentLedgerId.value; storage.ledgers.value = storage.ledgers.value.filter(l => l.id !== targetId); storage.partitions.value = storage.partitions.value.filter(p => p.ledgerId !== targetId); storage.records.value = storage.records.value.filter(r => r.ledgerId !== targetId); storage.saveData(); currentLedgerId.value = null; toast.showToast('账本已删除'); };
@@ -540,6 +621,7 @@
         }).filter(g => g.items.length > 0);
       });
 
+      const recentRecords = computed(() => [...storage.records.value].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5));
       const currentPartitions = computed(() => storage.partitions.value.filter(p => p.ledgerId === (quickForm.value.ledgerId || selectedLedgerForQuick.value)));
       const pickerMonthDisplay = computed(() => pickerMonthDate.value.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' }));
       const pickerCalendarDays = computed(() => generateCalendarDays(pickerMonthDate.value.getFullYear(), pickerMonthDate.value.getMonth()));
@@ -582,7 +664,7 @@
       const deleteRecord = async (id) => { const ok = await dialog.showConfirm('删除记录', '确定删除此记录？'); if (ok) { storage.records.value = storage.records.value.filter(r => r.id !== id); storage.saveData(); } };
       const createPartition = async () => { const n = await dialog.showPrompt('新增分区', '分区名称'); if (n) { storage.partitions.value.push({ id: generateId('P'), ledgerId: ledger.currentLedgerId.value, name: n.trim() }); storage.saveData(); } };
 
-      return { quickForm, selectedLedgerForQuick, showQuickSheet, showDatePicker, pickerMonthDate, pickerMonthDisplay, pickerCalendarDays, isEditing, searchQuery, statusFilter, statusFilters, hasActiveFilter, currentStats, pendingOrders, groupedRecords, filteredGroupedRecords, currentPartitions, toggleDatePicker, changePickerMonth, selectPickerDate, prepareQuickEntry, startEdit, submitQuickEntry, toggleRecordStatus, markAsProduced, deleteRecord, createPartition };
+      return { quickForm, selectedLedgerForQuick, showQuickSheet, showDatePicker, pickerMonthDate, pickerMonthDisplay, pickerCalendarDays, isEditing, searchQuery, statusFilter, statusFilters, hasActiveFilter, currentStats, pendingOrders, groupedRecords, filteredGroupedRecords, recentRecords, currentPartitions, toggleDatePicker, changePickerMonth, selectPickerDate, prepareQuickEntry, startEdit, submitQuickEntry, toggleRecordStatus, markAsProduced, deleteRecord, createPartition };
     }
 
     // ===== Composable: useCalendar =====
@@ -703,6 +785,7 @@
           showLedgerModal: ledger.showLedgerModal, newLedgerName: ledger.newLedgerName,
           getLedgerStats: ledger.getLedgerStats, getLedgerName: ledger.getLedgerName,
           totalPaid: ledger.totalPaid, totalReceivable: ledger.totalReceivable, paidRatio: ledger.paidRatio,
+          monthOrderCount: ledger.monthOrderCount, monthAvgAmount: ledger.monthAvgAmount, monthMaxAmount: ledger.monthMaxAmount,
           createLedger: ledger.createLedger, deleteLedger: ledger.deleteLedger,
           quickForm: records.quickForm, selectedLedgerForQuick: records.selectedLedgerForQuick,
           showQuickSheet: records.showQuickSheet, showDatePicker: records.showDatePicker,
@@ -710,7 +793,7 @@
           pickerCalendarDays: records.pickerCalendarDays, isEditing: records.isEditing,
           searchQuery: records.searchQuery, statusFilter: records.statusFilter, statusFilters: records.statusFilters, hasActiveFilter: records.hasActiveFilter,
           currentStats: records.currentStats, pendingOrders: records.pendingOrders,
-          groupedRecords: records.groupedRecords, filteredGroupedRecords: records.filteredGroupedRecords, currentPartitions: records.currentPartitions,
+          groupedRecords: records.groupedRecords, filteredGroupedRecords: records.filteredGroupedRecords, recentRecords: records.recentRecords, currentPartitions: records.currentPartitions,
           toggleDatePicker: records.toggleDatePicker, changePickerMonth: records.changePickerMonth,
           selectPickerDate: records.selectPickerDate, prepareQuickEntry: records.prepareQuickEntry,
           startEdit: records.startEdit, submitQuickEntry: records.submitQuickEntry,
