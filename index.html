@@ -142,6 +142,18 @@
     .filter-pill { padding: 4px 12px; border-radius: 9999px; font-size: 10px; font-weight: 700; transition: all 0.15s; }
     .filter-pill-active { background: #18181b; color: white; }
     .filter-pill-inactive { background: #f4f4f7; color: #71717a; }
+    /* 交互优化 */
+    .btn-press { transition: transform 0.1s ease; }
+    .btn-press:active { transform: scale(0.9); }
+    .card-press { transition: transform 0.15s ease; }
+    .card-press:active { transform: scale(0.98); }
+    .tab-bounce { transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s; }
+    .tab-bounce.tab-active { transform: scale(1.12); }
+    .search-focus { transition: border-color 0.2s, box-shadow 0.2s; }
+    .search-focus:focus { border-color: #34d399; box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15); outline: none; }
+    .swipe-item { position: relative; overflow: hidden; }
+    .swipe-content { transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1); position: relative; z-index: 1; background: inherit; border-radius: inherit; }
+    .swipe-actions { position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: center; z-index: 0; }
   </style>
 </head>
 <body>
@@ -160,14 +172,14 @@
           {{ activeTab === 'ledgers' ? '项目' : activeTab === 'todo' ? '待办' : activeTab === 'stats' ? '看板' : currentMonthDisplay }}
         </h1>
         <div class="flex gap-2 items-center">
-          <button v-if="activeTab === 'todo'" @click="prepareQuickEntry('', 0, true)" class="bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg">添加</button>
+          <button v-if="activeTab === 'todo'" @click="prepareQuickEntry('', 0, true)" class="btn-press bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg">添加</button>
           <template v-if="activeTab === 'stats'">
-            <button @click="showExportPanel = true" class="bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1"><i class="ri-download-line"></i> 导出</button>
+            <button @click="showExportPanel = true" class="btn-press bg-zinc-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1"><i class="ri-download-line"></i> 导出</button>
           </template>
           <button v-if="activeTab==='ledgers'" @click="showSyncPanel = true" :class="synced?'text-emerald-500':'text-zinc-300'" class="text-xl"><i :class="syncing?'ri-loader-4-line animate-spin':'ri-cloud-line'"></i></button>
           <template v-if="activeTab === 'calendar'">
-            <button @click="changeMonth(-1)" aria-label="上个月" class="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-left-s-line"></i></button>
-            <button @click="changeMonth(1)" aria-label="下个月" class="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-right-s-line"></i></button>
+            <button @click="changeMonth(-1)" aria-label="上个月" class="btn-press w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-left-s-line"></i></button>
+            <button @click="changeMonth(1)" aria-label="下个月" class="btn-press w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center"><i class="ri-arrow-right-s-line"></i></button>
           </template>
         </div>
       </header>
@@ -177,7 +189,7 @@
         <div v-if="activeTab === 'ledgers'" class="space-y-4 pt-2">
           <div v-if="ledgers.length===0" class="py-24 text-center text-zinc-400"><i class="ri-add-circle-line text-5xl block mb-4"></i><p class="text-xs">点击底部"+"号创建账本</p></div>
           <transition-group name="list-item">
-          <div v-for="ledger in ledgers" :key="ledger.id" @click="enterLedger(ledger.id)" :data-id="ledger.id" :class="['ledger-card p-6 rounded-[var(--radius-lg)] border bg-zinc-50 border-zinc-100 flex justify-between transition-all', hoveredLedgerId===ledger.id?'drop-highlight':'shadow-sm']">
+          <div v-for="ledger in ledgers" :key="ledger.id" @click="enterLedger(ledger.id)" :data-id="ledger.id" :class="['card-press ledger-card p-6 rounded-[var(--radius-lg)] border bg-zinc-50 border-zinc-100 flex justify-between transition-all', hoveredLedgerId===ledger.id?'drop-highlight':'shadow-sm']">
             <div class="flex-1 min-w-0"><p class="text-[10px] font-bold text-emerald-500 uppercase mb-1">实收项目金</p><div class="flex items-baseline gap-1"><span class="text-xs font-black">¥</span><span class="text-3xl font-black truncate text-zinc-900">{{ getLedgerStats(ledger.id).paid }}</span></div><h3 class="mt-2 text-sm font-bold text-zinc-400 truncate"># {{ ledger.name }}</h3></div>
             <div class="text-right pl-2"><p class="text-[10px] font-bold text-zinc-400 uppercase">待结</p><p class="text-sm font-black text-zinc-300">¥{{ getLedgerStats(ledger.id).receivable }}</p></div>
           </div>
@@ -189,7 +201,7 @@
           <div v-if="pendingOrders.length===0" class="py-20 text-center text-zinc-300"><i class="ri-checkbox-circle-line text-5xl block mb-4 text-zinc-200"></i><p class="text-sm">全部活儿都干完了</p></div>
           <div v-for="order in pendingOrders" :key="order.id" class="bg-orange-50 p-5 rounded-[var(--radius-lg)] border border-orange-100 flex justify-between items-center">
             <div class="flex-1 pr-4"><p class="font-bold text-zinc-800 text-sm">{{ order.customer }}</p><p class="text-[10px] text-orange-400 font-bold uppercase mt-1">{{ getLedgerName(order.ledgerId) }} · ¥{{ order.amount }}</p></div>
-            <button @click="markAsProduced(order.id)" class="bg-zinc-900 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-90">完工</button>
+            <button @click="markAsProduced(order.id)" class="btn-press bg-zinc-900 text-white text-[10px] font-black px-4 py-2 rounded-xl">完工</button>
           </div>
         </div>
 
@@ -313,7 +325,7 @@
           <div class="mt-4 bg-amber-50 p-4 rounded-[var(--radius-lg)] border border-amber-200">
             <p class="text-xs font-black text-amber-700 mb-3 flex items-center gap-2"><i class="ri-sticker-line"></i> 常用贴纸</p>
             <div class="flex flex-wrap gap-2">
-              <button v-for="emoji in stickerLibrary" :key="emoji" @click="addStickerToSelectedDay(emoji)" class="text-xl p-2 bg-white rounded-xl shadow-sm active:scale-90 transition-transform">{{ emoji }}</button>
+              <button v-for="emoji in stickerLibrary" :key="emoji" @click="addStickerToSelectedDay(emoji)" class="btn-press text-xl p-2 bg-white rounded-xl shadow-sm">{{ emoji }}</button>
             </div>
             <button @click="clearDayStickers" class="mt-3 text-[10px] font-bold text-red-400 underline">清除当日贴纸</button>
           </div>
@@ -322,7 +334,7 @@
 
       <!-- 底部导航 -->
       <nav class="absolute bottom-0 w-full bg-white/90 backdrop-blur-xl border-t border-zinc-100 flex justify-around py-6 px-4 z-[100]" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px))">
-        <button v-for="tab in tabs" :key="tab.id" @click="activeTab=tab.id" :aria-label="tab.n" :class="activeTab===tab.id?'tab-active scale-110':'tab-inactive'" class="flex flex-col items-center gap-1 transition-all">
+        <button v-for="tab in tabs" :key="tab.id" @click="activeTab=tab.id" :aria-label="tab.n" :class="activeTab===tab.id?'tab-active':'tab-inactive'" class="tab-bounce flex flex-col items-center gap-1">
           <i :class="tab.icon" class="text-2xl"></i><span class="text-[9px] uppercase font-bold">{{ tab.n }}</span>
         </button>
       </nav>
@@ -343,7 +355,7 @@
       <div class="px-6 pt-4 pb-2 space-y-3 sticky bg-white z-10" style="top: calc(4.5rem + env(safe-area-inset-top, 0px))">
         <div class="relative">
           <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-zinc-300 text-sm"></i>
-          <input v-model="searchQuery" placeholder="搜索客户或备注..." class="w-full bg-zinc-50 rounded-xl pl-9 pr-8 py-2.5 text-xs font-bold">
+          <input v-model="searchQuery" placeholder="搜索客户或备注..." class="search-focus w-full bg-zinc-50 rounded-xl pl-9 pr-8 py-2.5 text-xs font-bold">
           <button v-if="searchQuery" @click="searchQuery=''" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300"><i class="ri-close-line"></i></button>
         </div>
         <div class="flex gap-2">
@@ -363,10 +375,17 @@
         <div v-for="group in filteredGroupedRecords" :key="group.partitionId" class="mb-10">
           <div class="flex justify-between items-end mb-4 border-b-2 pb-2"><h4 class="text-sm font-black">{{ group.name }}</h4><span class="text-[10px] font-bold text-zinc-400">¥{{ group.subtotal }}</span></div>
           <transition-group name="list-item">
-          <div v-for="record in group.items" :key="record.id" class="bg-zinc-50 p-5 rounded-[2rem] flex items-center gap-4 mb-3" @touchstart.passive="_lpTimer=setTimeout(()=>navigator.vibrate(15),400)" @touchend="clearTimeout(_lpTimer)" @touchmove="clearTimeout(_lpTimer)">
-            <div @click="toggleRecordStatus(record)" class="cursor-pointer active:scale-125 transition-transform duration-200"><transition name="status-spin" mode="out-in"><i :key="record.status" :class="record.status==='paid'?'ri-checkbox-circle-fill text-emerald-500':record.status==='produced'?'ri-checkbox-blank-circle-line text-zinc-300':'ri-time-line text-orange-400'" class="text-2xl"></i></transition></div>
-            <div @click="startEdit(record)" class="flex-1 cursor-pointer"><div class="flex justify-between font-bold text-sm"><span class="truncate">{{ record.customer }}</span><span :class="record.status==='paid'?'text-zinc-900':'text-zinc-400'">¥{{ record.amount }}</span></div><p class="text-[9px] text-zinc-400 mt-1">{{ formatDate(record.date) }} <span v-if="record.note">· {{record.note}}</span></p></div>
-            <button @click="deleteRecord(record.id)" aria-label="删除记录" class="text-zinc-200"><i class="ri-close-line text-xl"></i></button>
+          <div v-for="record in group.items" :key="record.id" class="swipe-item bg-zinc-50 rounded-[2rem] mb-3"
+               @touchstart.passive="_lpTimer=setTimeout(()=>navigator.vibrate(15),400)"
+               @touchend="clearTimeout(_lpTimer)" @touchmove="clearTimeout(_lpTimer)">
+            <div class="swipe-actions"><button @click="deleteRecord(record.id)" class="h-full px-5 bg-red-500 text-white font-bold text-xs rounded-r-[2rem]">删除</button></div>
+            <div class="swipe-content p-5 flex items-center gap-4"
+                 :style="{transform: swipeOffset[record.id]?'translateX('+swipeOffset[record.id]+'px)':''}"
+                 @touchstart.stop="onSwipeItemStart($event,record.id)" @touchmove.stop.prevent="onSwipeItemMove($event,record.id)" @touchend.stop="onSwipeItemEnd($event,record.id)">
+              <div @click="toggleRecordStatus(record)" class="cursor-pointer active:scale-125 transition-transform duration-200"><transition name="status-spin" mode="out-in"><i :key="record.status" :class="record.status==='paid'?'ri-checkbox-circle-fill text-emerald-500':record.status==='produced'?'ri-checkbox-blank-circle-line text-zinc-300':'ri-time-line text-orange-400'" class="text-2xl"></i></transition></div>
+              <div @click="startEdit(record)" class="flex-1 cursor-pointer"><div class="flex justify-between font-bold text-sm"><span class="truncate">{{ record.customer }}</span><span :class="record.status==='paid'?'text-zinc-900':'text-zinc-400'">¥{{ record.amount }}</span></div><p class="text-[9px] text-zinc-400 mt-1">{{ formatDate(record.date) }} <span v-if="record.note">· {{record.note}}</span></p></div>
+              <button @click="deleteRecord(record.id)" aria-label="删除记录" class="text-zinc-200"><i class="ri-close-line text-xl"></i></button>
+            </div>
           </div>
           </transition-group>
         </div>
@@ -378,7 +397,9 @@
     <div v-if="showQuickSheet" class="sheet-mask" @click="showQuickSheet=false"></div>
     <transition name="sheet-up">
       <div v-if="showQuickSheet" class="sheet-float" @touchstart.stop>
-        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"></div>
+        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"
+             @touchstart="onSheetPullStart($event,'quick')" @touchmove.prevent="onSheetPullMove($event,'quick')" @touchend="onSheetPullEnd('quick')"
+             :style="sheetPullStyle('quick')" style="cursor:grab;padding:8px 0;margin-top:-8px;"></div>
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-xl font-black">{{ isEditing ? '编辑记录' : '入账确认' }}</h2>
           <p class="text-2xl font-black text-emerald-500">¥{{ quickForm.amount }}</p>
@@ -433,7 +454,7 @@
             <button @click="quickForm.partitionId=''" :class="quickForm.partitionId===''?'bg-zinc-900 text-white':'bg-zinc-100'" class="px-3 py-1.5 rounded-xl text-[9px]">默认</button>
           </div>
         </div>
-        <button @click="submitQuickEntry" class="w-full bg-zinc-900 text-white py-4 rounded-[var(--radius-lg)] font-black mt-6">{{ isEditing ? '保 存 修 改' : '确 认 记 入' }}</button>
+        <button @click="submitQuickEntry" class="btn-press w-full bg-zinc-900 text-white py-4 rounded-[var(--radius-lg)] font-black mt-6">{{ isEditing ? '保 存 修 改' : '确 认 记 入' }}</button>
       </div>
     </transition>
 
@@ -441,7 +462,9 @@
     <div v-if="showExportPanel" class="sheet-mask" @click="showExportPanel=false"></div>
     <transition name="sheet-up">
       <div v-if="showExportPanel" class="sheet-float">
-        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"></div>
+        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"
+             @touchstart="onSheetPullStart($event,'export')" @touchmove.prevent="onSheetPullMove($event,'export')" @touchend="onSheetPullEnd('export')"
+             :style="sheetPullStyle('export')" style="cursor:grab;padding:8px 0;margin-top:-8px;"></div>
         <h2 class="text-xl font-black mb-4">导出数据</h2>
         <div class="space-y-3">
           <div class="bg-zinc-50 p-4 rounded-2xl">
@@ -468,8 +491,8 @@
           </div>
         </div>
         <div class="flex gap-2 mt-6">
-          <button @click="doExport" class="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-black">导出CSV</button>
-          <button @click="showExportPanel=false" class="px-6 py-4 text-zinc-500 font-bold">取消</button>
+          <button @click="doExport" class="btn-press flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-black">导出CSV</button>
+          <button @click="showExportPanel=false" class="btn-press px-6 py-4 text-zinc-500 font-bold">取消</button>
         </div>
       </div>
     </transition>
@@ -478,7 +501,9 @@
     <div v-if="showSyncPanel" class="sheet-mask" @click="showSyncPanel=false"></div>
     <transition name="sheet-up">
       <div v-if="showSyncPanel" class="sheet-float">
-        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"></div>
+        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"
+             @touchstart="onSheetPullStart($event,'sync')" @touchmove.prevent="onSheetPullMove($event,'sync')" @touchend="onSheetPullEnd('sync')"
+             :style="sheetPullStyle('sync')" style="cursor:grab;padding:8px 0;margin-top:-8px;"></div>
         <h2 class="text-xl font-black mb-4">云端同步</h2>
         <div class="space-y-3">
           <div class="bg-zinc-50 p-4 rounded-2xl">
@@ -497,10 +522,10 @@
           <div v-if="lastSync" class="text-[9px] text-zinc-400 text-center">上次同步: {{ lastSync }}</div>
         </div>
         <div class="flex gap-2 mt-6">
-          <button v-if="synced" @click="pushToGist" :disabled="syncing" class="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-black text-sm">{{ syncing ? '同步中...' : '推送' }}</button>
-          <button v-if="synced" @click="pullFromGist" :disabled="syncing" class="flex-1 bg-zinc-100 text-zinc-700 py-4 rounded-2xl font-black text-sm">{{ syncing ? '同步中...' : '拉取' }}</button>
-          <button v-if="!synced && syncToken.trim()" @click="saveToken(); pushToGist()" :disabled="syncing" class="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-black text-sm">{{ syncing ? '连接中...' : '连接并同步' }}</button>
-          <button v-if="synced" @click="disconnect" class="px-4 text-red-400 font-bold text-sm">断开</button>
+          <button v-if="synced" @click="pushToGist" :disabled="syncing" class="btn-press flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-black text-sm">{{ syncing ? '同步中...' : '推送' }}</button>
+          <button v-if="synced" @click="pullFromGist" :disabled="syncing" class="btn-press flex-1 bg-zinc-100 text-zinc-700 py-4 rounded-2xl font-black text-sm">{{ syncing ? '同步中...' : '拉取' }}</button>
+          <button v-if="!synced && syncToken.trim()" @click="saveToken(); pushToGist()" :disabled="syncing" class="btn-press flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-black text-sm">{{ syncing ? '连接中...' : '连接并同步' }}</button>
+          <button v-if="synced" @click="disconnect" class="btn-press px-4 text-red-400 font-bold text-sm">断开</button>
         </div>
         <p v-if="syncMsg" class="text-center text-xs font-bold mt-3" :class="syncMsg.includes('成功')?'text-emerald-500':'text-red-400'">{{ syncMsg }}</p>
       </div>
@@ -509,6 +534,23 @@
     <!-- 贴纸选择器 -->
     <div v-if="showStickerPicker" class="sheet-mask" @click="showStickerPicker=false"></div>
     <transition name="sheet-up"><div v-if="showStickerPicker" class="sheet-float text-center"><p class="text-sm font-black mb-3">选择贴纸 · {{ selectedDayForSticker?.dateNum }}日</p><div class="flex flex-wrap justify-center gap-2 mb-4"><button v-for="e in stickerLibrary" @click="addStickerToDay(e); showStickerPicker=false" class="text-2xl p-2 bg-zinc-50 rounded-xl">{{e}}</button></div><button @click="removeLastSticker(); showStickerPicker=false" class="text-xs text-red-400 font-bold">移除最后一个</button></div></transition>
+
+    <!-- 删除确认 Sheet -->
+    <div v-if="showDeleteSheet" class="sheet-mask" @click="showDeleteSheet=false"></div>
+    <transition name="sheet-up">
+      <div v-if="showDeleteSheet" class="sheet-float" @touchstart.stop>
+        <div class="w-10 h-1 bg-zinc-100 rounded-full mx-auto mb-6"></div>
+        <div class="text-center mb-6">
+          <div class="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4"><i class="ri-delete-bin-line text-2xl text-red-500"></i></div>
+          <h2 class="text-xl font-black mb-2">确认删除</h2>
+          <p class="text-sm text-zinc-400">此操作不可恢复，确定要删除吗？</p>
+        </div>
+        <div class="flex gap-3">
+          <button @click="confirmDeleteRecord" class="btn-press flex-1 bg-red-500 text-white py-4 rounded-2xl font-black">删除</button>
+          <button @click="showDeleteSheet=false" class="btn-press flex-1 bg-zinc-100 text-zinc-700 py-4 rounded-2xl font-black">取消</button>
+        </div>
+      </div>
+    </transition>
 
     <!-- 自定义确认/输入对话框 -->
     <div v-if="dialog.show" class="sheet-mask flex items-center justify-center p-8" @click="cancelDialog">
@@ -617,7 +659,7 @@
       const enterLedger = (id) => { currentLedgerId.value = id; };
       const createLedger = () => { if (!newLedgerName.value.trim()) return; storage.ledgers.value.push({ id: generateId('L'), name: newLedgerName.value.trim() }); storage.saveData(); showLedgerModal.value = false; newLedgerName.value = ''; toast.showToast('项目已创建'); };
       const deleteLedger = async () => { const ok = await dialog.showConfirm('删除账本', '删除账本将同时删除该账本下的所有订单记录和分区，不可恢复。'); if (!ok) return; const targetId = currentLedgerId.value; storage.ledgers.value = storage.ledgers.value.filter(l => l.id !== targetId); storage.partitions.value = storage.partitions.value.filter(p => p.ledgerId !== targetId); storage.records.value = storage.records.value.filter(r => r.ledgerId !== targetId); storage.saveData(); currentLedgerId.value = null; toast.showToast('账本已删除'); };
-      return { currentLedgerId, currentLedger, showLedgerModal, newLedgerName, ledgerStatsMap, getLedgerStats, getLedgerName, totalPaid, totalReceivable, paidRatio, enterLedger, createLedger, deleteLedger };
+      return { currentLedgerId, currentLedger, showLedgerModal, newLedgerName, ledgerStatsMap, getLedgerStats, getLedgerName, totalPaid, totalReceivable, paidRatio, monthOrderCount, monthAvgAmount, monthMaxAmount, enterLedger, createLedger, deleteLedger };
     }
 
     // ===== Composable: useRecords =====
@@ -628,6 +670,17 @@
       const searchQuery = ref(''); const statusFilter = ref('all');
       const statusFilters = [{ value: 'all', label: '全部' }, { value: 'pending', label: '待办' }, { value: 'produced', label: '待结' }, { value: 'paid', label: '已收' }];
       const hasActiveFilter = computed(() => searchQuery.value.trim() !== '' || statusFilter.value !== 'all');
+
+      // 滑动删除
+      const swipeOffset = ref({}); let _swipeStartX = 0, _swipeId = null;
+      const onSwipeItemStart = (e, id) => { _swipeStartX = e.touches[0].clientX; _swipeId = id; };
+      const onSwipeItemMove = (e, id) => { if (_swipeId !== id) return; const dx = e.touches[0].clientX - _swipeStartX; swipeOffset.value = { ...swipeOffset.value, [id]: Math.min(0, Math.max(-80, dx)) }; };
+      const onSwipeItemEnd = (e, id) => { const offset = swipeOffset.value[id] || 0; swipeOffset.value = { ...swipeOffset.value, [id]: offset < -40 ? -80 : 0 }; _swipeId = null; };
+
+      // 删除确认 Sheet
+      const showDeleteSheet = ref(false); const pendingDeleteId = ref(null);
+      const deleteRecord = (id) => { pendingDeleteId.value = id; showDeleteSheet.value = true; };
+      const confirmDeleteRecord = () => { if (pendingDeleteId.value) { storage.records.value = storage.records.value.filter(r => r.id !== pendingDeleteId.value); storage.saveData(); } showDeleteSheet.value = false; pendingDeleteId.value = null; };
 
       const currentStats = computed(() => ({ paid: sumAmount(storage.records.value.filter(r => r.ledgerId === ledger.currentLedgerId.value && r.status === 'paid')) }));
       const pendingOrders = computed(() => storage.records.value.filter(r => r.status === 'pending').sort((a, b) => b.date - a.date));
@@ -694,10 +747,9 @@
 
       const toggleRecordStatus = (r) => { if (r.status === 'pending') r.status = 'produced'; else if (r.status === 'produced') r.status = 'paid'; else r.status = 'produced'; storage.saveData(); };
       const markAsProduced = (id) => { const r = storage.records.value.find(x => x.id === id); if (r) { r.status = 'produced'; storage.saveData(); toast.showToast('完工'); } };
-      const deleteRecord = async (id) => { const ok = await dialog.showConfirm('删除记录', '确定删除此记录？'); if (ok) { storage.records.value = storage.records.value.filter(r => r.id !== id); storage.saveData(); } };
       const createPartition = async () => { const n = await dialog.showPrompt('新增分区', '分区名称'); if (n) { storage.partitions.value = [...storage.partitions.value, { id: generateId('P'), ledgerId: ledger.currentLedgerId.value, name: n.trim() }]; storage.saveData(); toast.showToast('分区已创建'); } };
 
-      return { quickForm, selectedLedgerForQuick, showQuickSheet, showDatePicker, pickerMonthDate, pickerMonthDisplay, pickerCalendarDays, isEditing, searchQuery, statusFilter, statusFilters, hasActiveFilter, currentStats, pendingOrders, groupedRecords, filteredGroupedRecords, recentRecords, currentPartitions, toggleDatePicker, changePickerMonth, selectPickerDate, prepareQuickEntry, startEdit, submitQuickEntry, toggleRecordStatus, markAsProduced, deleteRecord, createPartition };
+      return { quickForm, selectedLedgerForQuick, showQuickSheet, showDatePicker, pickerMonthDate, pickerMonthDisplay, pickerCalendarDays, isEditing, searchQuery, statusFilter, statusFilters, hasActiveFilter, currentStats, pendingOrders, groupedRecords, filteredGroupedRecords, recentRecords, currentPartitions, toggleDatePicker, changePickerMonth, selectPickerDate, prepareQuickEntry, startEdit, submitQuickEntry, toggleRecordStatus, markAsProduced, deleteRecord, createPartition, swipeOffset, onSwipeItemStart, onSwipeItemMove, onSwipeItemEnd, showDeleteSheet, confirmDeleteRecord };
     }
 
     // ===== Composable: useCalendar =====
@@ -735,7 +787,8 @@
       };
       const debouncedRender = () => { clearTimeout(chartDebounce); chartDebounce = setTimeout(renderCharts, 300); };
       onBeforeUnmount(() => { barChart?.destroy(); pieChart?.destroy(); lineChart?.destroy(); });
-      return { renderCharts: debouncedRender };
+      const destroyCharts = () => { barChart?.destroy(); barChart = null; pieChart?.destroy(); pieChart = null; lineChart?.destroy(); lineChart = null; };
+      return { renderCharts: debouncedRender, destroyCharts };
     }
 
     // ===== Composable: useDrag =====
@@ -925,8 +978,19 @@
         const csvExport = useExport(storage.records, storage.ledgers);
         const cloudSync = useCloudSync(storage, toast);
 
+        // 下拉关闭 Sheet
+        const _sheetPull = { startY: 0, currentY: 0, active: null };
+        const sheetPullOffset = ref({});
+        const onSheetPullStart = (e, key) => { _sheetPull.startY = e.touches[0].clientY; _sheetPull.currentY = 0; _sheetPull.active = key; };
+        const onSheetPullMove = (e, key) => { if (_sheetPull.active !== key) return; _sheetPull.currentY = Math.max(0, e.touches[0].clientY - _sheetPull.startY); sheetPullOffset.value = { ...sheetPullOffset.value, [key]: _sheetPull.currentY }; };
+        const onSheetPullEnd = (key) => { if (_sheetPull.active !== key) return; const offset = sheetPullOffset.value[key] || 0; if (offset > 80) { if (key === 'quick') records.showQuickSheet.value = false; else if (key === 'export') csvExport.showExportPanel.value = false; else if (key === 'sync') cloudSync.showSyncPanel.value = false; } sheetPullOffset.value = { ...sheetPullOffset.value, [key]: 0 }; _sheetPull.active = null; };
+        const sheetPullStyle = (key) => { const offset = sheetPullOffset.value[key] || 0; return offset > 0 ? { transform: `translateY(${offset}px)`, transition: 'none' } : {}; };
+
         watch(() => storage.records.value.length, () => { if (activeTab.value === 'stats') charts.renderCharts(); });
-        watch(activeTab, (newTab) => { if (newTab === 'stats') setTimeout(charts.renderCharts, 100); });
+        watch(activeTab, (newTab, oldTab) => {
+          if (oldTab === 'stats') { charts.destroyCharts(); }
+          if (newTab === 'stats') setTimeout(charts.renderCharts, 100);
+        });
 
         onMounted(() => { cloudSync.initSync(); });
         watch(storage.records, () => { if (cloudSync.synced.value) cloudSync.debouncedPush(); }, { deep: true });
@@ -975,6 +1039,8 @@
           startEdit: records.startEdit, submitQuickEntry: records.submitQuickEntry,
           toggleRecordStatus: records.toggleRecordStatus, markAsProduced: records.markAsProduced,
           deleteRecord: records.deleteRecord, createPartition: records.createPartition,
+          swipeOffset: records.swipeOffset, onSwipeItemStart: records.onSwipeItemStart, onSwipeItemMove: records.onSwipeItemMove, onSwipeItemEnd: records.onSwipeItemEnd,
+          showDeleteSheet: records.showDeleteSheet, confirmDeleteRecord: records.confirmDeleteRecord,
           currentMonthDisplay: calendar.currentMonthDisplay, calendarDays: calendar.calendarDays,
           showStickerPicker: calendar.showStickerPicker, selectedDayForSticker: calendar.selectedDayForSticker,
           getDayOrdersCount: calendar.getDayOrdersCount, hasPaidOrder: calendar.hasPaidOrder,
@@ -992,7 +1058,8 @@
           lastSync: cloudSync.lastSync, synced: cloudSync.synced,
           pushToGist: cloudSync.pushToGist, pullFromGist: cloudSync.pullFromGist,
           saveToken: cloudSync.saveToken, disconnect: cloudSync.disconnect,
-          enterLedger, formatDate, onSwipeStart, onSwipeEnd
+          enterLedger, formatDate, onSwipeStart, onSwipeEnd,
+          onSheetPullStart, onSheetPullMove, onSheetPullEnd, sheetPullStyle
         };
       }
     };
